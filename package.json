@@ -10,6 +10,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node ./server/server.js",
+    "build": "git add . && git commit -m 'update' && git push origin main",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
