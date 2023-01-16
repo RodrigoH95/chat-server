@@ -41,14 +41,27 @@ io.on("connection", socket => {
 });
 
 function changeRoom(socket, roomId) {
-  for (room of socket.rooms) {
-    if(socket.id !== room) socket.leave(room);
-  }
+  leaveAllRooms(socket);
   socket.join(roomId);
+  getRoomInfo(roomId);
   const clientName = salas.find(sala => sala.includes(socket.id)).split(":")[2];
   const hostName = salas.find(sala => sala.includes(roomId)).split(":")[2];
   io.to(roomId).emit("user-join-room", clientName, hostName);
 }
+
+function leaveAllRooms(socket) {
+  for (room of socket.rooms) {
+    if(socket.id !== room) socket.leave(room);
+  }
+}
+
+function getRoomInfo(room) {
+  const r = io.sockets.adapter.rooms[room];
+  console.log(r);
+  return r;
+}
+
+
 server.listen(process.env.PORT, () => {
   console.log("Server running on port " + process.env.PORT);
 })
