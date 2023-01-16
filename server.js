@@ -1,23 +1,24 @@
 const express = require('express');
+require("dotenv").config();
 const app = express();
 const server = require("http").createServer(app);
-require("dotenv").config();
-const io = require("socket.io")(server, {
-  cors: {
-    origin: '*'
-  }
-});
+const io = require("socket.io")(server, {cors: {origin: '*'}});
+const RoomService = require("./services/room").RoomService;
 
-// https://mensajea.netlify.app
-
-let salas = [];
+const rooms = new RoomService();
 
 io.on("connection", socket => {
   
 
-  socket.on("new-user", data => {
-    salas.push("sala:" + socket.id + ":" + data.name);
-    io.emit("room-list", salas);
+  socket.on("new-user", () => {
+    const usersAmount = io.sockets.sockets.size;
+    console.log(usersAmount, rooms.getCapacity());
+
+    while(rooms.getCapacity() < usersAmount) {
+      rooms.createRoom();
+    }
+    updateRooms(); 
+    rooms.getRooms().forEach(room => console.log(room.getID(), room.playerList()));
   })
 
   socket.on("send-message", (message) => {
@@ -30,37 +31,57 @@ io.on("connection", socket => {
     return io.sockets.in(room).emit("receive-message", {id: socket.id, message});
   });
 
-  socket.on("join-room", id => {
-    changeRoom(socket, id);
+  socket.on("join-room", (id, roomName, playerName) => {
+    changeRoom(socket, id, roomName, playerName);
   });
 
-  socket.on("disconnect", () => {
-    salas = salas.filter(sala => sala.split(":")[1] !== socket.id);
-    io.emit("room-list", salas);
+  socket.on("disconnect", (reason) => {
+    console.log(`User ${socket.id} disconnected: ${reason}`);
+    rooms.removePlayerByID(socket.id);
+    cleanRooms();
+    updateRooms();
   })
 });
 
-function changeRoom(socket, roomId) {
-  leaveAllRooms(socket);
-  socket.join(roomId);
-  getRoomInfo(roomId);
-  const clientName = salas.find(sala => sala.includes(socket.id)).split(":")[2];
-  const hostName = salas.find(sala => sala.includes(roomId)).split(":")[2];
-  io.to(roomId).emit("user-join-room", clientName, hostName);
-}
-
-function leaveAllRooms(socket) {
-  for (room of socket.rooms) {
-    if(socket.id !== room) socket.leave(room);
+function cleanRooms() {
+  const usersAmount = io.sockets.sockets.size;
+  while(rooms.getCapacity() > usersAmount + 2) {
+    const index = rooms.getRooms().findIndex(room => room.playerList().length === 0 && !room.hasGameStarted);
+    rooms.removeRoom(index);
   }
 }
 
-function getRoomInfo(room) {
-  const r = io.sockets.adapter.rooms[room];
-  console.log(r);
-  return r;
+function changeRoom(socket, roomId, roomName, playerName) {
+  let room = rooms.find(roomId);
+  if(room.isFull()) {
+    socket.emit("room-full");
+    return;
+  }
+  leaveAllRooms(socket);
+  socket.join(roomId);
+  room.addPlayer(socket.id, playerName);
+  const usersInRoom = room.getPlayerNames();
+  io.to(roomId).emit("user-join-room", socket.id, roomName, playerName);
+  io.to(roomId).emit("room-users", usersInRoom);
 }
 
+function updateRooms() {
+  const data = rooms.getRooms().map(room => ({id: room.id, number: room.number}));
+  console.log(data);
+  io.emit("room-list", data);
+}
+
+function leaveAllRooms(socket) {
+  for (const room of socket.rooms) {
+    if(socket.id !== room) {
+      socket.leave(room);
+      const r = rooms.find(room);
+      r.removePlayer(socket.id);
+      const usersInRoom = r.getPlayerNames();
+      io.to(r.getID()).emit("room-users", usersInRoom);
+    };
+  }
+}
 
 server.listen(process.env.PORT, () => {
   console.log("Server running on port " + process.env.PORT);

@@ -1,42 +1,47 @@
 const Player = require('./player').Player;
 
 class Room {
-  constructor(id, capacity = 2) {
-    console.log("Room", id, "created!");
-    this.id = id;
+  constructor(id, number, capacity = 2) {
+    console.log(`Sala ${number} (${id}) creada!`);
+    this.number = number;
+    this.id = "sala_" + id;
     this.players = [];
-    this.capacity = 2;
+    this.capacity = capacity;
     this.gameService = null;
     this.hasGameStarted = false;
-    this.isFull = false;
   }
 
   addPlayer(id, name) {
-    const player = new Player(id, name);
-    if(this.players.length < this.capacity) {
+    if(!this.isFull()) {
+      const player = new Player(id, name);
       this.players.push(player);
+      console.log(`${name} se une a ${this.id}`);
     } else {
-      console.log("Room is full");
-      this.isFull = true;
+      console.log(this.id, + " is full");
     }
-
+   
    if(this.canStartMatch()) this.startMatch();
   }
 
   removePlayer(id) {
-    this.players = this.players.filter(player => player.id !== id);
-    if(this.players.length < this.capacity) this.isFull = false;
+    for(let player of this.players) {
+      if(player.id === id) {
+        console.log(`${player.name} abandona ${this.id}`);
+        this.players.splice(this.players.indexOf(player), 1);
+      }
+    }
   }
 
-  
   playerList() {
-    console.log("Players from room:", this.id);
-    console.log(this.players);
     return this.players;
   }
 
+  getPlayerNames() {
+    return this.playerList().map(player => player.name);
+  }
+
   canStartMatch() {
-    return this.isFull && !this.hasGameStarted;
+    return this.isFull() && !this.hasGameStarted;
   }
 
   startMatch() {
@@ -51,6 +56,14 @@ class Room {
 
   getID() {
     return this.id;
+  }
+
+  getNumber() {
+    return this.number;
+  }
+
+  isFull() {
+    return this.players.length === this.capacity;
   }
 }
 
