@@ -2,9 +2,10 @@ const utils = require('../utils/utils');
 const Room = require("../utils/room").Room;
 
 class RoomService {
-  constructor() {
+  constructor(io) {
     this.rooms = [];
     this.counter = 1;
+    this.io = io;
   }
 
   createRoom() {
@@ -41,6 +42,49 @@ class RoomService {
 
   getCurrentOccupation() {
     return this.rooms.map(room => room.players.length).reduce((total, user) => total + user, 0);
+  }
+
+  updateRooms() {
+    const data = this.getRooms().map(room => ({id: room.getID(), number: room.getNumber()}));
+    this.io.emit("room-list", data);
+  }
+
+  cleanRooms(usersAmount) {
+    while(this.getCapacity() > usersAmount + 2) {
+      const index = this.getRooms().findIndex(room => room.playerList().length === 0 && !room.hasGameStarted);
+      this.removeRoom(index);
+    }
+
+    this.updateRooms();
+  }
+
+  changeRoom(socket, roomId, playerName) {
+    let room = this.find(roomId);
+    if(room.isFull()) return socket.emit("room-full")
+    this.leaveAllRooms(socket);
+    socket.join(roomId);
+    room.addPlayer(socket.id, playerName);
+    let roomName = room.getNumber();
+    this.io.to(roomId).emit("user-join-room", socket.id, roomName, playerName);
+    this.sendUsersConnected(roomId);
+  }
+
+  leaveAllRooms(socket) {
+    for (const room of socket.rooms) {
+      if(socket.id !== room) {
+        socket.leave(room);
+        const r = this.find(room);
+        r.removePlayer(socket.id);
+        const usersInRoom = r.getPlayerNames();
+        this.sendUsersConnected(r.getID());
+      };
+    }
+  }
+
+  sendUsersConnected(id) {
+    const room = this.find(id);
+    const usersInRoom = room.getPlayerNames();
+    this.io.to(id).emit("room-users", usersInRoom);
   }
 }
 
