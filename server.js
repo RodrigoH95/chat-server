@@ -5,14 +5,14 @@ const server = require("http").createServer(app);
 const io = require("socket.io")(server, {cors: {origin: '*'}});
 const RoomService = require("./services/room").RoomService;
 
-const rooms = new RoomService(io);
+const roomService = new RoomService(io);
 
 io.on("connection", socket => {
 
   socket.on("new-user", () => {
     const usersAmount = io.sockets.sockets.size;
-    while(rooms.getCapacity() < usersAmount) rooms.createRoom();
-    rooms.updateRooms();
+    while(roomService.getCapacity() < usersAmount) roomService.createRoom();
+    roomService.updateRooms();
   })
 
   socket.on("send-message", (message) => {
@@ -21,13 +21,13 @@ io.on("connection", socket => {
   });
 
   socket.on("join-room", (id, playerName) => {
-    rooms.changeRoom(socket, id, playerName);
+    roomService.changeRoom(socket, id, playerName);
   });
 
   socket.on("disconnect", (reason) => {
     console.log(`User ${socket.id} disconnected: ${reason}`);
-    rooms.removePlayerByID(socket.id);
-    rooms.cleanRooms(io.sockets.sockets.size);
+    roomService.removePlayerByID(socket.id);
+    roomService.cleanRooms(io.sockets.sockets.size);
   })
 });
 
