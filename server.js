@@ -19,7 +19,9 @@ io.on("connection", socket => {
 
   socket.on("send-message", (message) => {
     // message es un objeto con claves id, sender y message
-    const room = socket.rooms.size < 2 ? socket.id : [...socket.rooms][1];
+    // Ya no se usa el id del socket porque no hay salas personales
+    // const room = socket.rooms.size < 2 ? socket.id : [...socket.rooms][1];
+    const room = socket.rooms[1];
     return messageService.sendMessage(room, message);
   });
 
