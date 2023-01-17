@@ -12,10 +12,7 @@ const generateID = (length = 6) => {
 }
 
 const getFormattedDateTime = () => {
-  return new Date().toLocaleTimeString('es-AR', {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return new Date().toLocaleTimeString('es-AR', { hour: "2-digit", minute: "2-digit", timeZone: 'America/Argentina/Buenos_Aires' });
 }
 
 const formatMessageData = (data) => {
