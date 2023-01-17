@@ -11,6 +11,24 @@ const generateID = (length = 6) => {
   return result;
 }
 
+const getFormattedDateTime = () => {
+  return new Date().toLocaleTimeString('es-AR', {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+const formatMessageData = (data) => {
+  const obj = {
+    id: data.id,
+    sender: data.sender,
+    message: data.message,
+    time: getFormattedDateTime(),
+  }
+
+  return obj;
+}
+
 console.log(generateID());
 
-module.exports = { generateID }
+module.exports = { generateID, getFormattedDateTime, formatMessageData }

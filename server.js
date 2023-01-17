@@ -4,8 +4,10 @@ const app = express();
 const server = require("http").createServer(app);
 const io = require("socket.io")(server, {cors: {origin: '*'}});
 const RoomService = require("./services/room").RoomService;
+const MessageService = require("./services/message").MessageService;
 
 const roomService = new RoomService(io);
+const messageService = new MessageService(io);
 
 io.on("connection", socket => {
 
@@ -16,16 +18,22 @@ io.on("connection", socket => {
   })
 
   socket.on("send-message", (message) => {
+    // message es un objeto con claves id, sender y message
     const room = socket.rooms.size < 2 ? socket.id : [...socket.rooms][1];
-    return io.sockets.in(room).emit("receive-message", {id: socket.id, message});
+    return messageService.sendMessage(room, message);
   });
 
-  socket.on("join-room", (id, playerName) => {
-    roomService.changeRoom(socket, id, playerName);
+  socket.on("join-room", (roomID, playerName) => {
+    roomService.changeRoom(socket, roomID, playerName);
   });
 
-  socket.on("disconnect", (reason) => {
+  socket.on("user-change-name", (currentRoom, userName) => {
+    roomService.userNameChange(currentRoom, socket.id, userName);
+  });
+
+  socket.on("disconnecting", (reason) => {
     console.log(`User ${socket.id} disconnected: ${reason}`);
+    roomService.leaveAllRooms(socket);
     roomService.removePlayerByID(socket.id);
     roomService.cleanRooms(io.sockets.sockets.size);
   })

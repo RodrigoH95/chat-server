@@ -2,7 +2,7 @@ const Player = require('./player').Player;
 
 class Room {
   constructor(id, number, capacity = 2) {
-    console.log(`Sala ${number} (${id}) creada!`);
+    console.log(`Sala ${number} (${id}) creada.`);
     this.number = number;
     this.id = "sala_" + id;
     this.players = [];
@@ -26,14 +26,17 @@ class Room {
   removePlayer(id) {
     for(let player of this.players) {
       if(player.id === id) {
-        console.log(`${player.name} abandona ${this.id}`);
-        this.players.splice(this.players.indexOf(player), 1);
+        return this.players.splice(this.players.indexOf(player), 1)[0];
       }
     }
   }
 
   playerList() {
     return this.players;
+  }
+
+  getPlayersData() {
+    return this.playerList().map(player => ({id: player.id, name: player.name}));
   }
 
   getPlayerNames() {
