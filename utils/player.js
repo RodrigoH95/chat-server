@@ -3,6 +3,7 @@ class Player {
     this.id = id;
     this.name = name;
     this.cards = [];
+    this.estaEscribiendo = false;
   }
 }
 

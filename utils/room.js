@@ -35,8 +35,16 @@ class Room {
     return this.playerList().map(player => ({id: player.id, name: player.name}));
   }
 
+  getUsersWriting() {
+    return this.playerList().filter(player => player.estaEscribiendo).map(player => ({id: player.id, name: player.name}));
+  }
+
   getPlayerNames() {
     return this.playerList().map(player => player.name);
+  }
+
+  getPlayerByID(id) {
+    return this.players.find(player => player.id === id) || null;
   }
 
   getID() {

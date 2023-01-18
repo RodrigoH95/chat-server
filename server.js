@@ -17,6 +17,14 @@ io.on("connection", socket => {
     // const usersAmount = io.sockets.sockets.size;
     // while(roomService.getCapacity() < usersAmount) roomService.createRoom();
     roomService.updateRooms(socket.id);
+  });
+
+  socket.on("user-is-writing", () => {
+    roomService.userIsWriting(socket.id, true);
+  });
+
+  socket.on("user-stop-writing", () => {
+    roomService.userIsWriting(socket.id, false);
   })
 
   socket.on("send-message", (message) => {
@@ -38,7 +46,7 @@ io.on("connection", socket => {
   socket.on("disconnecting", (reason) => {
     console.log(`User ${socket.id} disconnected: ${reason}`);
     roomService.leaveAllRooms(socket);
-    roomService.removePlayerByID(socket.id);
+    // roomService.removePlayerByID(socket.id); // Ya lo hace leaveAllRooms
     // roomService.cleanRooms(io.sockets.sockets.size); // Ya no es requerido porque el numero de salas es fijo
   })
 });

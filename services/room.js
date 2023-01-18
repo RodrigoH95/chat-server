@@ -41,15 +41,19 @@ class RoomService {
   findRoomByName(roomName) {
     return this.rooms.find(room => room.getNumber() == roomName) || null;
   }
+
+  findRoomByPlayerID(playerID) {
+    return this.rooms.find(room => room.playerList().find(player => player.id === playerID));
+  }
   
   getPlayerListByRoomName(roomName) {
-    // if(roomName === "lobby") return this.lobby;
     const room = this.rooms.find(room => String(room.getNumber()) === roomName);
     if(room) return room.playerList();
   }
 
   removePlayerByID(playerID) {
-    let room = this.rooms.find(room => room.playerList().find(player => player.id === playerID));
+    console.log("Removiendo al jugador", playerID);
+    const room = this.findRoomByPlayerID(playerID);
     if(room) room.removePlayer(playerID);
   }
 
@@ -75,7 +79,6 @@ class RoomService {
   }
 
   changeRoom(socket, roomName, playerName) {
-    // if(roomID === "lobby") return this.joinLobby(socket, playerName);
     let room = this.findRoomByName(roomName);
     if(room === null) return socket.emit("room-not-found");
     if(room.isFull()) return socket.emit("room-full")
@@ -84,17 +87,9 @@ class RoomService {
     socket.join(roomID);
     room.addPlayer(socket.id, playerName);
     this.io.to(roomID).emit("user-join-room", socket.id, roomName, playerName);
-    this.sendUsersConnected(roomID);
+    this.sendUsersInfo(roomID);
   }
 
-  // joinLobby(socket, userName) {
-  //   console.log(userName, "is joining Lobby");
-  //   this.lobby.push({id: socket.id, name: userName});
-  //   this.leaveAllRooms(socket, userName);
-  //   socket.join("lobby");
-  //   this.io.to("lobby").emit("user-join-room", socket.id, "lobby", userName);
-  //   this.sendUsersInLobby();
-  // }
 
   leaveAllRooms(socket) {
     for (const roomID of socket.rooms) {
@@ -104,12 +99,8 @@ class RoomService {
         const room = this.find(roomID);
         if(room) {
           user = room.removePlayer(socket.id);
-          this.sendUsersConnected(room.getID());
+          this.sendUsersInfo(roomID);
         }
-        // if(roomID === "lobby") {
-        //   user = this.removeUserFromLobby(socket.id);
-        //   this.sendUsersInLobby();
-        // }
         console.log(user.name, "abandona", roomID);
         this.io.to(roomID).emit("user-leaves-room", user.name);
       };
@@ -128,22 +119,32 @@ class RoomService {
     return this.sendUsersConnected(this.rooms.find(room => String(room.getNumber()) === roomName).getID());
   }
 
-  // getUsersInLobby() {
-  //   return this.lobby;
-  // }
+  userIsWriting(userID, isWriting) {
+    const room = this.findRoomByPlayerID(userID);
+    if(room) {
+      const user = room.getPlayerByID(userID);
+      if(user) user.estaEscribiendo = isWriting;
+      this.sendUsersWriting(room.getID());
+    }
+  }
 
-  // sendUsersInLobby() {
-  //   this.io.to("lobby").emit("room-users", this.getUsersInLobby());
-  // }
-
-  // removeUserFromLobby(userID) {
-  //   return this.lobby.splice(this.lobby.findIndex(user => user.id === userID), 1)[0];
-  // }
+  sendUsersWriting(roomID) {
+    const room = this.find(roomID);
+    if(room) {
+      const usersWriting = room.getUsersWriting();
+      this.io.to(room.getID()).emit("user-writing", usersWriting);
+    }
+  }
 
   sendUsersConnected(id) {
     const room = this.find(id);
     const data = room.getPlayersData();
     this.io.to(id).emit("room-users", data);
+  }
+
+  sendUsersInfo(roomID) {
+    this.sendUsersConnected(roomID);
+    this.sendUsersWriting(roomID);
   }
 }
 
