@@ -4,11 +4,9 @@ class Room {
   constructor(id, number, capacity = 2) {
     console.log(`Sala ${number} (${id}) creada.`);
     this.number = number;
-    this.id = "sala_" + id;
+    this.id = id;
     this.players = [];
     this.capacity = capacity;
-    this.gameService = null;
-    this.hasGameStarted = false;
   }
 
   addPlayer(id, name) {
@@ -19,8 +17,6 @@ class Room {
     } else {
       console.log(this.id, + " is full");
     }
-   
-   if(this.canStartMatch()) this.startMatch();
   }
 
   removePlayer(id) {
@@ -43,20 +39,6 @@ class Room {
     return this.playerList().map(player => player.name);
   }
 
-  canStartMatch() {
-    return this.isFull() && !this.hasGameStarted;
-  }
-
-  startMatch() {
-    console.log("Match started in room", this.id);
-    this.hasGameStarted = true;
-  }
-
-  endMatch() {
-    console.log("Match ended in room", this.id);
-    this.hasGameEnded = false;
-  }
-
   getID() {
     return this.id;
   }
@@ -70,4 +52,26 @@ class Room {
   }
 }
 
-module.exports = { Room };
+class GameRoom extends Room {
+  constructor(id, number) {
+    super(id, number, 2);
+    this.gameService = null;
+    this.hasGameStarted = false;
+  }
+
+  canStartMatch() {
+    return this.isFull() && !this.hasGameStarted;
+  }
+
+  startMatch() {
+    console.log("Match started in room", this.id);
+    this.hasGameStarted = true;
+  }
+
+  endMatch() {
+    console.log("Match ended in room", this.id);
+    this.hasGameEnded = false;
+  }
+}
+
+module.exports = { Room, GameRoom };

@@ -9,24 +9,26 @@ const MessageService = require("./services/message").MessageService;
 const roomService = new RoomService(io);
 const messageService = new MessageService(io);
 
+roomService.init();
+
 io.on("connection", socket => {
 
   socket.on("new-user", () => {
-    const usersAmount = io.sockets.sockets.size;
-    while(roomService.getCapacity() < usersAmount) roomService.createRoom();
-    roomService.updateRooms();
+    // const usersAmount = io.sockets.sockets.size;
+    // while(roomService.getCapacity() < usersAmount) roomService.createRoom();
+    roomService.updateRooms(socket.id);
   })
 
   socket.on("send-message", (message) => {
     // message es un objeto con claves id, sender y message
     // Ya no se usa el id del socket porque no hay salas personales
     // const room = socket.rooms.size < 2 ? socket.id : [...socket.rooms][1];
-    const room = socket.rooms[1];
+    const room = [...socket.rooms][1];
     return messageService.sendMessage(room, message);
   });
 
-  socket.on("join-room", (roomID, playerName) => {
-    roomService.changeRoom(socket, roomID, playerName);
+  socket.on("join-room", (roomName, playerName) => {
+    roomService.changeRoom(socket, roomName, playerName);
   });
 
   socket.on("user-change-name", (currentRoom, userName) => {
@@ -37,7 +39,7 @@ io.on("connection", socket => {
     console.log(`User ${socket.id} disconnected: ${reason}`);
     roomService.leaveAllRooms(socket);
     roomService.removePlayerByID(socket.id);
-    roomService.cleanRooms(io.sockets.sockets.size);
+    // roomService.cleanRooms(io.sockets.sockets.size); // Ya no es requerido porque el numero de salas es fijo
   })
 });
 
