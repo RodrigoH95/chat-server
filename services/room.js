@@ -27,7 +27,6 @@ class RoomService {
   }
 
   removeRoom(index) {
-    console.log("Removing Room");
     this.rooms.splice(index, 1);
   }
 
@@ -46,7 +45,7 @@ class RoomService {
   getPlayerListByRoomName(roomName) {
     // if(roomName === "lobby") return this.lobby;
     const room = this.rooms.find(room => String(room.getNumber()) === roomName);
-    return room.playerList();
+    if(room) return room.playerList();
   }
 
   removePlayerByID(playerID) {
@@ -119,10 +118,13 @@ class RoomService {
 
   userNameChange(roomName, userID, newName) {
     let previousName = "";
-    let user = this.getPlayerListByRoomName(roomName).find(user => user.id === userID);
-    previousName = user.name;
-    user.name = newName;
-    console.log(`Usuario ${previousName} (${userID}) cambia su nombre a ${newName} (Sala: ${roomName})`)
+    const room = this.getPlayerListByRoomName(roomName);
+    let user = room.find(user => user.id === userID);
+    if(user) {
+      previousName = user.name;
+      user.name = newName;
+      console.log(`Usuario ${previousName} (${userID}) cambia su nombre a ${newName} (Sala: ${roomName})`);
+    }
     return this.sendUsersConnected(this.rooms.find(room => String(room.getNumber()) === roomName).getID());
   }
 
