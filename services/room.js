@@ -66,7 +66,12 @@ class RoomService {
   }
 
   updateRooms(socketID = null) {
-    const data = this.getRooms().map(room => ({id: room.getID(), number: room.getNumber()}));
+    const data = this.getRooms().map(room => ({
+      id: room.getID(),
+      number: room.getNumber(),
+      currentUsers: room.getCurrentOccupation(),
+      capacity: room.getCapacity()
+    }));
     socketID ? this.io.to(socketID).emit("room-list", data) : this.io.emit("room-list", data);
   }
 
@@ -136,13 +141,26 @@ class RoomService {
     }
   }
 
-  sendUsersConnected(id) {
-    const room = this.find(id);
+  sendUsersConnected(roomID) {
+    const room = this.find(roomID);
     const data = room.getPlayersData();
-    this.io.to(id).emit("room-users", data);
+    this.io.to(roomID).emit("room-users", data);
+  }
+
+  sendRoomInfo(roomID) {
+    const room = this.find(roomID);
+    if(room) {
+      const data = {
+        id: room.getID(),
+        currentUsers: room.getCurrentOccupation(),
+        capacity: room.getCapacity()
+      }
+      this.io.emit("room-updated", roomID, data);
+    }
   }
 
   sendUsersInfo(roomID) {
+    this.sendRoomInfo(roomID);
     this.sendUsersConnected(roomID);
     this.sendUsersWriting(roomID);
   }

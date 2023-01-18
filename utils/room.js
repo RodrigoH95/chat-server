@@ -31,6 +31,14 @@ class Room {
     return this.players;
   }
 
+  getCurrentOccupation() {
+    return this.players.length;
+  }
+
+  getCapacity() {
+    return this.capacity;
+  }
+
   getPlayersData() {
     return this.playerList().map(player => ({id: player.id, name: player.name}));
   }
