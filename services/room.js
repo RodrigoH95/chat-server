@@ -86,6 +86,7 @@ class RoomService {
   changeRoom(socket, roomName, playerName) {
     let room = this.findRoomByName(roomName);
     if(room === null) return socket.emit("room-not-found");
+    if(room === this.findRoomByPlayerID(socket.id)) return socket.emit("user-already-in-room");
     if(room.isFull()) return socket.emit("room-full")
     let roomID = room.getID();
     this.leaveAllRooms(socket, playerName);
