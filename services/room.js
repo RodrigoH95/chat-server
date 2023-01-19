@@ -125,16 +125,16 @@ class RoomService {
     return this.sendUsersConnected(this.rooms.find(room => String(room.getNumber()) === roomName).getID());
   }
 
-  userIsWriting(userID, isWriting) {
+  userIsTyping(userID, isTyping) {
     const room = this.findRoomByPlayerID(userID);
     if(room) {
       const user = room.getPlayerByID(userID);
-      if(user) user.estaEscribiendo = isWriting;
-      this.sendUsersWriting(room.getID());
+      if(user) user.estaEscribiendo = isTyping;
+      this.sendUsersTyping(room.getID());
     }
   }
 
-  sendUsersWriting(roomID) {
+  sendUsersTyping(roomID) {
     const room = this.find(roomID);
     if(room) {
       const usersWriting = room.getUsersWriting();
@@ -163,7 +163,7 @@ class RoomService {
   sendUsersInfo(roomID) {
     this.sendRoomInfo(roomID);
     this.sendUsersConnected(roomID);
-    this.sendUsersWriting(roomID);
+    this.sendUsersTyping(roomID);
   }
 }
 

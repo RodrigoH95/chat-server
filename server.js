@@ -19,13 +19,9 @@ io.on("connection", socket => {
     roomService.updateRooms(socket.id);
   });
 
-  socket.on("user-is-writing", () => {
-    roomService.userIsWriting(socket.id, true);
+  socket.on("user-is-writing", (isUserTyping) => {
+    roomService.userIsTyping(socket.id, isUserTyping);
   });
-
-  socket.on("user-stop-writing", () => {
-    roomService.userIsWriting(socket.id, false);
-  })
 
   socket.on("send-message", (message) => {
     // message es un objeto con claves id, sender y message
