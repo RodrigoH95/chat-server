@@ -1,5 +1,6 @@
 const CardService = require("./cards");
 const utils = require("../../utils/utils");
+const Calculadora = require('./calculator').CalculadoraDeResultados;
 
 class GameLogic {
   constructor(io, room) {
@@ -24,6 +25,7 @@ class GameLogic {
   }
 
   iniciarPartida() {
+    this.players.forEach(player => player.cards = []);
     this.cardManager.generarMazo();
     this.repartirCartas();
   }
@@ -82,6 +84,26 @@ class GameLogic {
     }
   }
 
+  playerEndsRound(isPlayerOne, card, socket) {
+    const player = this.players.find(player => player.isPlayerOne === isPlayerOne);
+    const opponent = this.players.find(player => player.isPlayerOne !== isPlayerOne);
+    try {
+      console.log(player.name, "corta");
+      player.cards = player.cards.filter(c => JSON.stringify(c) !== JSON.stringify(card));
+      this.calculateScores(player);
+      this.calculateScores(opponent);
+      console.log("Puntajes", this.players.map(player => player.score));
+      this.roundEnd(card);
+    } catch(err) {
+      console.log("gameLogic.js playerEndsRound - Error finalizando ronda (no se encontró jugador");
+    }
+  }
+
+  calculateScores(player) {
+    player.score = Math.max(0, player.score + Calculadora.calcular(player.cards));
+    
+  }
+
   agregarCartaAlJugador(receiver, drawnCard) {
     // receiver debe ser el indice del jugador que recibe la carta
     const player = this.players[receiver];
@@ -94,6 +116,16 @@ class GameLogic {
     console.log("recibe jugador", receiver + 1)
     this.agregarCartaAlJugador(index, card);
     this.sendCard(receiver, card);
+  }
+
+  roundEnd(card) {
+    const data = this.players.map(player => ({name: player.name, isPlayerOne: player.isPlayerOne, cards: player.cards, score: player.score }))
+    this.io.to(this.roomID).emit("round-end", card, data);
+    this.turn = !this.turn;
+    setTimeout(() => {
+      this.io.to(this.roomID).emit("round-start");
+      this.iniciarPartida();
+    }, 5000)
   }
 
   sendCard(receptor, card) {
@@ -137,6 +169,7 @@ class GameLogic {
       descarte: this.cardManager.descarte,
       turno: this.turn,
     }
+    console.log("Sending data to user", data);
     this.io.to(userID).emit("load-match", data);
   }
 }

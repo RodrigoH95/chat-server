@@ -62,6 +62,15 @@ io.on("connection", socket => {
     }
   });
 
+  socket.on("usuario-corta", (isPlayerOne, carta) => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    try {
+      room.gameLogic.playerEndsRound(isPlayerOne, carta, socket);
+    } catch (err) {
+      console.log("usuario-corta falló");
+    }
+  })
+
   socket.on("toma-descarte", (isPlayerOne) => {
     const room = roomService.findRoomByPlayerID(socket.id);
     if(room) {
@@ -95,6 +104,18 @@ io.on("connection", socket => {
     setTimeout(() => {
       nuevaRonda();
     }, 1500);
+  });
+
+  socket.on("user-rearrange-deck", (gameID, isPlayerOne, deck) => {
+    const room = roomService.findGameRoomByID(gameID);
+    console.log("gameID is", gameID);
+    console.log("isPlayerOne is", isPlayerOne, typeof isPlayerOne);
+    try {
+      const player = room.gameLogic.players.find(player => player.isPlayerOne === isPlayerOne);
+      player.cards = deck;
+    } catch (err) {
+      console.log("No se pudo reordenar el mazo del jugador", err);
+    }
   });
 
   socket.on("user-reconnect", (gameID, userID, isPlayerOne) => {

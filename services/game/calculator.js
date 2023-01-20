@@ -211,4 +211,4 @@ class CalculadoraDeResultados {
 
 // CalculadoraDeResultados.calcular(mazo);
 
-module.exports = CalculadoraDeResultados;
+module.exports = { CalculadoraDeResultados };
