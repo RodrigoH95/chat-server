@@ -14,8 +14,6 @@ roomService.init();
 io.on("connection", socket => {
 
   socket.on("new-user", () => {
-    // const usersAmount = io.sockets.sockets.size;
-    // while(roomService.getCapacity() < usersAmount) roomService.createRoom();
     roomService.updateRooms(socket.id);
   });
 
@@ -25,8 +23,6 @@ io.on("connection", socket => {
 
   socket.on("send-message", (message) => {
     // message es un objeto con claves id, sender y message
-    // Ya no se usa el id del socket porque no hay salas personales
-    // const room = socket.rooms.size < 2 ? socket.id : [...socket.rooms][1];
     const room = [...socket.rooms][1];
     return messageService.sendMessage(room, message);
   });
@@ -39,11 +35,82 @@ io.on("connection", socket => {
     roomService.userNameChange(currentRoom, socket.id, userName);
   });
 
+  socket.on("player-ready", () => {
+    console.log("Player ready");
+    roomService.playerReady(socket.id);
+  });
+
+  socket.on("toma-carta", (isPlayerOne) => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room) {
+      const carta = room.gameLogic.drawOneCard();
+      console.log("server.js 'toma-carta' - se enviará", carta, "a jugador");
+      room.gameLogic.jugadorRecibeCarta(isPlayerOne, carta);
+    } else {
+      console.log(" server.js 'toma-carta' - No se encontró sala")
+    }
+    if (room.gameLogic.cardManager.getMazo().length === 0) {
+      io.to(room.getID()).emit("no-cards");
+      room.gameLogic.drawOneCard(); // si no hay cartas remezcla el descarte
+    }
+  });
+
+  socket.on("descarta", (isPlayerOne, carta) => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room) {
+      room.gameLogic.playerDiscard(isPlayerOne, carta, socket);
+    }
+  });
+
+  socket.on("toma-descarte", (isPlayerOne) => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room) {
+      const carta = room.gameLogic.cardManager.descarte.pop();
+      io.to(room.getID()).emit("eliminar-descarte");
+      room.gameLogic.jugadorRecibeCarta(isPlayerOne, carta);
+    }
+  });
+
+  socket.on("finaliza-turno", () => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room) {
+      room.gameLogic.newTurn();
+    }
+  });
+
+  // Necesita refactorizacion
+  socket.on("finaliza-ronda", () => {
+    console.log("Servidor comienza a calcular resultados");
+    players.forEach(player => {
+      console.log("Puntaje de", player.name, ":", Calculadora.calcular(player.cards));
+    })
+    const puntajes = [];
+    players.forEach(player => {
+      puntajes.push({
+        id: player.id,
+        puntaje: player.puntaje + Calculadora.calcular(player.cards),
+      })
+    })
+    io.emit("finaliza-ronda", puntajes);
+    setTimeout(() => {
+      nuevaRonda();
+    }, 1500);
+  });
+
+  socket.on("user-reconnect", (gameID, userID, isPlayerOne) => {
+    const room = roomService.findGameRoomByID(gameID);
+    try {
+      const player = room.gameLogic.players.find(player => player.isPlayerOne === isPlayerOne);
+      player.id = userID;
+      room.gameLogic.sendMatchDataToUser(userID);
+    } catch {
+      socket.emit("failed-load");
+    }
+  })
+
   socket.on("disconnecting", (reason) => {
     console.log(`User ${socket.id} disconnected: ${reason}`);
     roomService.leaveAllRooms(socket);
-    // roomService.removePlayerByID(socket.id); // Ya lo hace leaveAllRooms
-    // roomService.cleanRooms(io.sockets.sockets.size); // Ya no es requerido porque el numero de salas es fijo
   })
 });
 

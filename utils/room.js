@@ -1,4 +1,6 @@
 const Player = require('./player').Player;
+const GameLogic = require('../services/game/gameLogic').GameLogic;
+const utils = require("./utils");
 
 class Room {
   constructor(id, number, capacity = 2) {
@@ -69,9 +71,9 @@ class Room {
 }
 
 class GameRoom extends Room {
-  constructor(id, number) {
+  constructor(id, number, io) {
     super(id, number, 2);
-    this.gameService = null;
+    this.gameLogic = new GameLogic(io, this);
     this.hasGameStarted = false;
   }
 
@@ -80,13 +82,22 @@ class GameRoom extends Room {
   }
 
   startMatch() {
-    console.log("Match started in room", this.id);
     this.hasGameStarted = true;
   }
 
   endMatch() {
     console.log("Match ended in room", this.id);
     this.hasGameEnded = false;
+  }
+
+  addPlayerToGame(playerID) {
+    const player = super.getPlayerByID(playerID);
+    console.log("Agregando jugador a sala de juego", player.name, player.id);
+    this.gameLogic.addPlayer(player);
+  }
+
+  getGameID() {
+    return this.gameLogic.gameID;
   }
 }
 

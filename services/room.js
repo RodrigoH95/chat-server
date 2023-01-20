@@ -17,7 +17,7 @@ class RoomService {
 
   createRoom() {
     const roomID = utils.generateID();
-    const room = new GameRoom(roomID, this.counter++);
+    const room = new GameRoom(roomID, this.counter++, this.io);
     this.rooms.push(room);
     return room;
   }
@@ -44,6 +44,11 @@ class RoomService {
 
   findRoomByPlayerID(playerID) {
     return this.rooms.find(room => room.playerList().find(player => player.id === playerID));
+  }
+
+  findGameRoomByID(gameID) {
+    const gameRooms = this.rooms.filter(room => room instanceof GameRoom);
+    return gameRooms.find(room => room.getGameID() === gameID);
   }
   
   getPlayerListByRoomName(roomName) {
@@ -94,6 +99,11 @@ class RoomService {
     room.addPlayer(socket.id, playerName);
     this.io.to(roomID).emit("user-join-room", socket.id, roomName, playerName);
     this.sendUsersInfo(roomID);
+    if(room instanceof GameRoom && room.canStartMatch()) {
+      console.log("Se puede iniciar partida...");
+      this.io.to(roomID).emit("inicia-partida");
+      room.startMatch();
+    };
   }
 
 
@@ -111,6 +121,11 @@ class RoomService {
         this.io.to(roomID).emit("user-leaves-room", user.name);
       };
     }
+  }
+
+  playerReady(playerID) {
+    const room = this.findRoomByPlayerID(playerID);
+    room.addPlayerToGame(playerID);
   }
 
   userNameChange(roomName, userID, newName) {
