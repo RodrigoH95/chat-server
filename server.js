@@ -87,29 +87,8 @@ io.on("connection", socket => {
     }
   });
 
-  // Necesita refactorizacion
-  socket.on("finaliza-ronda", () => {
-    console.log("Servidor comienza a calcular resultados");
-    players.forEach(player => {
-      console.log("Puntaje de", player.name, ":", Calculadora.calcular(player.cards));
-    })
-    const puntajes = [];
-    players.forEach(player => {
-      puntajes.push({
-        id: player.id,
-        puntaje: player.puntaje + Calculadora.calcular(player.cards),
-      })
-    })
-    io.emit("finaliza-ronda", puntajes);
-    setTimeout(() => {
-      nuevaRonda();
-    }, 1500);
-  });
-
   socket.on("user-rearrange-deck", (gameID, isPlayerOne, deck) => {
     const room = roomService.findGameRoomByID(gameID);
-    console.log("gameID is", gameID);
-    console.log("isPlayerOne is", isPlayerOne, typeof isPlayerOne);
     try {
       const player = room.gameLogic.players.find(player => player.isPlayerOne === isPlayerOne);
       player.cards = deck;
@@ -119,6 +98,7 @@ io.on("connection", socket => {
   });
 
   socket.on("user-reconnect", (gameID, userID, isPlayerOne) => {
+    console.log(userID, "reconnecting...");
     const gameRoom = roomService.findGameRoomByID(gameID);
     const room = roomService.findRoomByPlayerID(userID);
     try {
@@ -131,7 +111,7 @@ io.on("connection", socket => {
     }
   })
 
-  socket.on("disconnecting", (reason) => {
+  socket.on("disconnect", (reason) => {
     console.log(`User ${socket.id} disconnected: ${reason}`);
     roomService.leaveAllRooms(socket);
   })
