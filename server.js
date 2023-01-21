@@ -28,6 +28,7 @@ io.on("connection", socket => {
   });
 
   socket.on("join-room", (roomName, playerName) => {
+    console.log("Usuario se une a sala", roomName);
     roomService.changeRoom(socket, roomName, playerName);
   });
 
@@ -37,28 +38,38 @@ io.on("connection", socket => {
 
   socket.on("player-ready", () => {
     console.log("Player ready");
-    roomService.playerReady(socket.id);
+    try {
+      roomService.playerReady(socket.id);
+    } catch (err) {
+      // socket.emit("error-starting-game");
+      console.log("error 'player-ready");
+    }
   });
 
   socket.on("toma-carta", (isPlayerOne) => {
     const room = roomService.findRoomByPlayerID(socket.id);
-    if(room) {
-      const carta = room.gameLogic.drawOneCard();
-      console.log("server.js 'toma-carta' - se enviará", carta, "a jugador");
-      room.gameLogic.jugadorRecibeCarta(isPlayerOne, carta);
-    } else {
-      console.log(" server.js 'toma-carta' - No se encontró sala")
-    }
-    if (room.gameLogic.cardManager.getMazo().length === 0) {
-      io.to(room.getID()).emit("no-cards");
-      room.gameLogic.drawOneCard(); // si no hay cartas remezcla el descarte
+    try {
+      if(room) {
+        const carta = room.gameLogic.drawOneCard();
+        room.gameLogic.jugadorRecibeCarta(isPlayerOne, carta);
+      }
+      if (room.gameLogic.cardManager.getMazo().length === 0) {
+        io.to(room.getID()).emit("no-cards");
+        room.gameLogic.drawOneCard(); // si no hay cartas remezcla el descarte
+      }
+    } catch (err) {
+      console.log("error 'toma-descarte'");
+      socket.emit("toma-carta-fail");
     }
   });
 
   socket.on("descarta", (isPlayerOne, carta) => {
     const room = roomService.findRoomByPlayerID(socket.id);
-    if(room) {
+    try {
       room.gameLogic.playerDiscard(isPlayerOne, carta, socket);
+    } catch (err) {
+      console.log("error 'descarta'");
+      socket.emit("descarta-fail");
     }
   });
 
@@ -68,15 +79,19 @@ io.on("connection", socket => {
       room.gameLogic.playerEndsRound(isPlayerOne, carta);
     } catch (err) {
       console.log("usuario-corta falló");
+      socket.emit("usuario-corta-fail");
     }
   })
 
   socket.on("toma-descarte", (isPlayerOne) => {
     const room = roomService.findRoomByPlayerID(socket.id);
-    if(room) {
+    try {
       const carta = room.gameLogic.cardManager.descarte.pop();
       io.to(room.getID()).emit("eliminar-descarte");
       room.gameLogic.jugadorRecibeCarta(isPlayerOne, carta);
+    } catch {
+      console.log("Error 'toma-descarte'")
+      socket.emit("toma-descarte-fail");
     }
   });
 
@@ -84,6 +99,9 @@ io.on("connection", socket => {
     const room = roomService.findRoomByPlayerID(socket.id);
     if(room) {
       room.gameLogic.newTurn();
+    } else {
+      console.log("Error ending turn");
+      socket.emit("finaliza-turno-fail");
     }
   });
 
@@ -98,6 +116,7 @@ io.on("connection", socket => {
   });
 
   socket.on("user-reconnect", (gameID, userID, isPlayerOne) => {
+    console.log(gameID, userID, isPlayerOne);
     console.log(userID, "reconnecting...");
     const gameRoom = roomService.findGameRoomByID(gameID);
     const room = roomService.findRoomByPlayerID(userID);
@@ -106,15 +125,16 @@ io.on("connection", socket => {
       const player = gameRoom.gameLogic.players.find(player => player.isPlayerOne === isPlayerOne);
       player.id = userID;
       gameRoom.gameLogic.sendMatchDataToUser(userID);
-    } catch {
+    } catch (err){
+      console.log("Error reconnecting...");
       socket.emit("failed-load");
     }
   })
 
-  socket.on("disconnect", (reason) => {
-    console.log(`User ${socket.id} disconnected: ${reason}`);
+  socket.on("disconnecting", (reason) => {
+    console.log(`User ${socket.id} disconnecting: ${reason}`);
     roomService.leaveAllRooms(socket);
-  })
+  });
 });
 
 server.listen(process.env.PORT, () => {
