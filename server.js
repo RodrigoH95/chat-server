@@ -65,7 +65,7 @@ io.on("connection", socket => {
   socket.on("usuario-corta", (isPlayerOne, carta) => {
     const room = roomService.findRoomByPlayerID(socket.id);
     try {
-      room.gameLogic.playerEndsRound(isPlayerOne, carta, socket);
+      room.gameLogic.playerEndsRound(isPlayerOne, carta);
     } catch (err) {
       console.log("usuario-corta falló");
     }
@@ -119,11 +119,13 @@ io.on("connection", socket => {
   });
 
   socket.on("user-reconnect", (gameID, userID, isPlayerOne) => {
-    const room = roomService.findGameRoomByID(gameID);
+    const gameRoom = roomService.findGameRoomByID(gameID);
+    const room = roomService.findRoomByPlayerID(userID);
     try {
-      const player = room.gameLogic.players.find(player => player.isPlayerOne === isPlayerOne);
+      if(gameRoom.getGameID() !== room.getGameID()) return socket.emit("failed-load");
+      const player = gameRoom.gameLogic.players.find(player => player.isPlayerOne === isPlayerOne);
       player.id = userID;
-      room.gameLogic.sendMatchDataToUser(userID);
+      gameRoom.gameLogic.sendMatchDataToUser(userID);
     } catch {
       socket.emit("failed-load");
     }

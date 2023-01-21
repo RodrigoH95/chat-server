@@ -1,12 +1,15 @@
 class CalculadoraDeResultados {
   static comodines;
   static mazoFinal;
+  static resumenParcial = "";
+  static resumenFinal = "";
 
   static calcular(mazo) {
     let puntajeFinal = 150;
-
+    console.log("Calculadora recibe mazo")
+    mazo.forEach(card => console.log(card, ","));
     for (let i = 0; i < 2; i++) {
-      // let resumen = "";
+      this.resumen = "";
       this.mazoFinal = [...mazo];
       this.comodines = this.mazoFinal.filter(
         (carta) => carta.palo === "comodin"
@@ -24,16 +27,21 @@ class CalculadoraDeResultados {
       
       if (puntaje < puntajeFinal) {
         puntajeFinal = puntaje;
+        this.resumenFinal = this.resumen;
       }
     }
-    // console.log(this.resumen);
+    puntajeFinal += 25 * this.comodines;
+    if(puntajeFinal === 0) puntajeFinal = -10;
+    if(this.resumenFinal === "") this.resumenFinal += `\n- No hizo ninguna combinación`;
+    if(this.comodines) this.resumenFinal += `\n- ${this.comodines} comodin/es sin utilizar`;
+    this.resumenFinal += `\n- Puntaje: ${puntajeFinal}`;
+    console.log("Resumen:", this.resumenFinal);
     return puntajeFinal;
   }
 
   static calcularPuntaje() {
-    
     return this.mazoFinal
-      .map((card) => card.valor)
+      .map(card => Number(card.valor))
       .reduce((acc, value) => acc + value, 0);
   }
 
@@ -88,7 +96,8 @@ class CalculadoraDeResultados {
 
   static buscarParejas(obj) {
     let result = [];
-    for (let valor in obj) {
+    // Se ordenan las claves de mayor a menor para armar las parejas mas altas primero
+    for (let valor of Object.keys(obj).reverse()) {
       if (obj[valor] == 2 && this.comodines) {
         result.push(valor + "*");
         this.comodines--;
@@ -101,6 +110,7 @@ class CalculadoraDeResultados {
 
   static buscarEscaleras(obj) {
     let result = {};
+    obj = this.sortObject(obj); // Ordena el objeto colocando primero los palos que tengan la mayor suma de valores
     for (let palo in obj) {
       result[palo] = [];
       const arr = obj[palo].reverse(); // Primero intenta formar combinaciones con los valores mas altos
@@ -110,7 +120,6 @@ class CalculadoraDeResultados {
           let comodinUtilizado = false;
           let currentValue = valores[0];
           let escalera = [currentValue];
-
           for (let i = 1; i < valores.length; i++) {
             if (currentValue - valores[i] == -2) {
               if (this.comodines && !comodinUtilizado) {
@@ -120,7 +129,9 @@ class CalculadoraDeResultados {
                 escalera.push(cartaComodin);
                 escalera.push(valores[i]);
               }
-              //else continue; no parece cumplir ninguna funcion
+              else {
+                escalera = [valores[i]];
+              }
             } else if (currentValue - valores[i] == -1) {
               escalera.push(valores[i]);
             }
@@ -146,6 +157,20 @@ class CalculadoraDeResultados {
       }
     }
     return result;
+  }
+
+  static sortObject(obj) {
+    const sortable = Object.fromEntries(
+      Object
+        .entries(obj)
+        .sort(([,a], [,b]) => this.format(b) - this.format(a))
+      )
+    return sortable;
+  }
+
+  static format(arr) {
+    // Concatena todos los arreglos en uno solo y luego suma sus valores
+    return arr.flat().reduce((acc, val) => acc + val, 0);
   }
 
   static extraerCartaDelMazo(palo, valor) {
@@ -178,12 +203,17 @@ class CalculadoraDeResultados {
     );
     const cartasOrdenadasPorPalo = this.ordernarPorPalos(this.mazoFinal, palos);
     const escaleras = this.buscarEscaleras(cartasOrdenadasPorPalo, this.comodines);
-    // for(let escalera in escaleras) {
-    //   escaleras[escalera].forEach(e => {
-    //     if(e !== []) this.resumen += `\n-Tiene escalera de ${e} de ${escalera}`;
-    //   })
-      
-    // }
+    for(let escalera in escaleras) {
+      escaleras[escalera].forEach(e => {
+        if(e !== []) {
+          if(e.indexOf("*") === -1 && this.comodines) {
+            e.push("*");
+            this.comodines--;
+          }
+          this.resumen += `\n- Escalera de ${e.join(", ")} de ${escalera}`
+        };
+      });      
+    }
   }
 
   static calcularParejas() {
@@ -191,22 +221,26 @@ class CalculadoraDeResultados {
       .filter((carta) => typeof carta.valor === "number")
       .map((carta) => carta.valor);
     const cantidades = this.contarValores(valores);
-    const parejas = this.buscarParejas(cantidades, this.comodines).reverse(); // primero las de mayor valor
+    const parejas = this.buscarParejas(cantidades, this.comodines);
     parejas.forEach((valor) => {
-      // this.resumen += `\n- Tiene parejas de ${valor.includes("*") ? valor[0] + " con comodin" : valor}.`
+      if(!valor.includes("*") && this.comodines) {
+        valor += "*"
+        this.comodines--;
+      };
+      this.resumen += `\n- Parejas de ${valor.includes("*") ? valor[0] + " con comodin" : valor}.`
       this.extraerCartaDelMazo("*", valor)
     });
   }
 }
 
 // let mazo = [
-//   { valor: 6, palo: "picas" },
-//   { valor: "as", palo: "picas" },
-//   { valor: 6, palo: "diamantes" },
-//   { valor: 1, palo: "trebol" },
-//   { valor: 2, palo: "trebol" },
-//   { valor: "as", palo: "corazones" },
-//   { valor: 3, palo: "trebol" },
+//   { valor: 5, palo: 'espadas' } ,
+//   { valor: 6, palo: 'espadas' } ,
+//   { valor: 3, palo: 'oro' } ,
+//   { valor: 1, palo: 'basto' } ,
+//   { valor: 10, palo: 'espadas' } ,
+//   { valor: 11, palo: 'espadas' } ,
+//   { valor: '', palo: 'comodin' } ,
 // ];
 
 // CalculadoraDeResultados.calcular(mazo);
