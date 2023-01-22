@@ -29,6 +29,8 @@ class CalculadoraDeResultados {
         puntajeFinal = puntaje;
         this.resumenFinal = this.resumen;
       }
+      console.log("Puntaje", i + 1, ":", puntaje);
+      console.log("Mazo final:", this.mazoFinal);
     }
     puntajeFinal += 25 * this.comodines;
     if(puntajeFinal === 0) puntajeFinal = -10;
@@ -97,7 +99,10 @@ class CalculadoraDeResultados {
   static buscarParejas(obj) {
     let result = [];
     // Se ordenan las claves de mayor a menor para armar las parejas mas altas primero
+    console.log("obj original:", obj);
+    console.log("claves ordenadas:", Object.keys(obj).reverse());
     for (let valor of Object.keys(obj).reverse()) {
+      console.log("valor", valor);
       if (obj[valor] == 2 && this.comodines) {
         result.push(valor + "*");
         this.comodines--;
@@ -105,6 +110,7 @@ class CalculadoraDeResultados {
         result.push(valor);
       }
     }
+    console.log("resultado", result);
     return result;
   }
 
@@ -174,13 +180,12 @@ class CalculadoraDeResultados {
   }
 
   static extraerCartaDelMazo(palo, valor) {
-    
     if (typeof valor === "string") {
       if (valor === "*") {
         this.extraerCartaDelMazo("comodin", "");
       } else if (valor.includes("*")) {
         this.extraerCartaDelMazo("comodin", "*");
-        valor = Number(valor[0]);
+        valor = Number(valor.slice(0, -1)); // Remueve el '*' para dejar solo el numero;
       }
     }
     if (palo === "*") {
@@ -227,22 +232,22 @@ class CalculadoraDeResultados {
         valor += "*"
         this.comodines--;
       };
-      this.resumen += `\n- Parejas de ${valor.includes("*") ? valor[0] + " con comodin" : valor}.`
-      this.extraerCartaDelMazo("*", valor)
+      this.resumen += `\n- Parejas de ${valor.includes("*") ? valor.slice(0, -1) + " con comodin" : valor}.`
+      this.extraerCartaDelMazo("*", valor);
     });
   }
 }
 
-// let mazo = [
-//   { valor: 5, palo: 'espadas' } ,
-//   { valor: 6, palo: 'espadas' } ,
-//   { valor: 3, palo: 'oro' } ,
-//   { valor: 1, palo: 'basto' } ,
-//   { valor: 10, palo: 'espadas' } ,
-//   { valor: 11, palo: 'espadas' } ,
-//   { valor: '', palo: 'comodin' } ,
-// ];
+let mazo = [
+  { valor: 11, palo: 'basto' } ,
+  { valor: '', palo: 'comodin' } ,
+  { valor: 11, palo: 'oro' } ,
+  { valor: 4, palo: 'copas' } ,
+  { valor: 2, palo: 'oro' } ,
+  { valor: 6, palo: 'copas' } ,
+  { valor: 4, palo: 'espadas' } ,
+];
 
-// CalculadoraDeResultados.calcular(mazo);
+CalculadoraDeResultados.calcular(mazo);
 
 module.exports = { CalculadoraDeResultados };
