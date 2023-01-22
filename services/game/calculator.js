@@ -6,8 +6,8 @@ class CalculadoraDeResultados {
 
   static calcular(mazo) {
     let puntajeFinal = 150;
-    console.log("Calculadora recibe mazo:")
-    mazo.forEach(card => console.log(card, ","));
+    // console.log("Calculadora recibe mazo:")
+    // mazo.forEach(card => console.log(card, ","));
     for (let i = 0; i < 2; i++) {
       this.parejas = null;
       this.escaleras = null;

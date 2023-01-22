@@ -73,7 +73,8 @@ class Room {
 class GameRoom extends Room {
   constructor(id, number, io) {
     super(id, number, 2);
-    this.gameLogic = new GameLogic(io, this);
+    this.io = io;
+    this.gameLogic = new GameLogic(this.io, this);
     this.hasGameStarted = false;
   }
 
@@ -87,7 +88,8 @@ class GameRoom extends Room {
 
   endMatch() {
     console.log("Match ended in room", this.id);
-    this.hasGameEnded = false;
+    this.hasGameStarted = false;
+    this.gameLogic = new GameLogic(this.io, this);
   }
 
   addPlayerToGame(playerID) {

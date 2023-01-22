@@ -12,6 +12,8 @@ class GameLogic {
     this.cardsPerPlayer = 7;
     this.turn = true; // true para jugador 1, false para jugador 2
     this.cardManager = new CardService();
+    this.pointsToLose = 100;
+    this.gameEnd = false;
   }
 
 
@@ -102,7 +104,8 @@ class GameLogic {
       player.cards = player.cards.filter(c => JSON.stringify(c) !== JSON.stringify(card));
       this.calculateScores(player);
       this.calculateScores(opponent);
-      console.log("Puntajes", this.players.map(player => player.score));
+      const scores = this.players.map(player => player.score);
+      if(Math.max(...scores) >= this.pointsToLose) this.gameEnd = true;
       this.roundEnd(card);
     } catch(err) {
       console.log("gameLogic.js playerEndsRound - Error finalizando ronda", err);
@@ -110,8 +113,8 @@ class GameLogic {
   }
 
   calculateScores(player) {
+    console.log("Calculando puntaje de:", player.name);
     player.score = Math.max(0, player.score + Calculadora.calcular(player.cards));
-    
   }
 
   agregarCartaAlJugador(receiver, drawnCard) {
@@ -130,7 +133,17 @@ class GameLogic {
   }
 
   roundEnd(card) {
-    const data = this.players.map(player => ({name: player.name, isPlayerOne: player.isPlayerOne, cards: player.cards, score: player.score }))
+    const data = this.players.map(player => ({ name: player.name, isPlayerOne: player.isPlayerOne, cards: player.cards, score: player.score }))
+    if(this.gameEnd) {
+      const winner = this.players.find(player => player.score === Math.min(...this.players.map(player => player.score)));
+      console.log(`Partida finaliza en sala ${this.room.getNumber()} (${this.roomID})`);
+      const winnerIsPlayerOne = winner.isPlayerOne;
+      this.io.to(this.roomID).emit("game-end", card, data, winnerIsPlayerOne);
+      return setTimeout(() => {
+        this.room.endMatch();
+        console.log(this.gameID, " - Sala de juego reiniciada...");
+      }, 3000);
+    }
     this.io.to(this.roomID).emit("round-end", card, data);
     this.turn = !this.turn;
     setTimeout(() => this.newRound(), 5000);
