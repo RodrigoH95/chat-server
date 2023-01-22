@@ -11,7 +11,7 @@ class GameLogic {
     this.players = [];
     this.cardsPerPlayer = 7;
     this.turn = true; // true para jugador 1, false para jugador 2
-    this.cardManager = new CardService(this.io, this.players);
+    this.cardManager = new CardService();
   }
 
 
@@ -123,8 +123,10 @@ class GameLogic {
   jugadorRecibeCarta(isPlayerOne, card) {
     const index = this.players.findIndex(player => player.isPlayerOne === isPlayerOne);
     const receiver = !isPlayerOne // 0 para jugador 1, 1 para jugador 2
-    this.agregarCartaAlJugador(index, card);
-    this.sendCard(receiver, card);
+    if(this.players[index].cards.length < 8) {
+      this.agregarCartaAlJugador(index, card);
+      this.sendCard(receiver, card);
+    }
   }
 
   roundEnd(card) {
@@ -174,5 +176,4 @@ class GameLogic {
     this.io.to(userID).emit("load-match", data);
   }
 }
-
 module.exports = { GameLogic };

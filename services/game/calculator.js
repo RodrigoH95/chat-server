@@ -6,9 +6,11 @@ class CalculadoraDeResultados {
 
   static calcular(mazo) {
     let puntajeFinal = 150;
-    console.log("Calculadora recibe mazo")
+    console.log("Calculadora recibe mazo:")
     mazo.forEach(card => console.log(card, ","));
     for (let i = 0; i < 2; i++) {
+      this.parejas = null;
+      this.escaleras = null;
       this.resumen = "";
       this.mazoFinal = [...mazo];
       this.comodines = this.mazoFinal.filter(
@@ -22,16 +24,60 @@ class CalculadoraDeResultados {
         this.calcularEscaleras();
         this.calcularParejas();
       }
+      for(let escalera in this.escaleras) {
+        this.escaleras[escalera].forEach(e => {
+          // Caso particular en el que haya 2 comodines y una sola escalera larga
+          // Se analiza si la escalera se puede dividir en 2 mas pequeñas
+          let str = e.join(", "); // Inicial
+          if(e.indexOf("*") !== -1 && e.length >= 5 && this.comodines) {
+            console.log("Probable division de escalera");
+            if(this.puedeDividirse(e)) {
+              this.comodines--;
+              this.extraerCartaDelMazo("comodin", "");
+              const divisiones = this.dividirEscalera(e); // Se agregan los comodines
+              divisiones.forEach(d => d.push("*"));
+              str = divisiones.join(" y ");
+            } else {
+              console.log("La escalera no se puede dividir");
+            }
+          }
+          // En el caso que haya quedado un comodin sobrante y se pueda agregar a un juego existente
+          else if (e.indexOf("*") === -1 && this.comodines) {
+            e.push("*");
+            this.comodines--;
+            this.extraerCartaDelMazo("comodin", "");
+            str = e.join(", ");
+          }
+          this.resumen += `\n- Escalera de ${str} de ${escalera}`;
+        });      
+      }
+      this.parejas.forEach((valor) => {
+        if(!valor.includes("*") && this.comodines) {
+          valor += "*"
+          this.comodines--;
+          this.extraerCartaDelMazo("comodin", "");
+        };
+        this.resumen += `\n- Parejas de ${valor.includes("*") ? valor.slice(0, -1) + " con comodin" : valor}.`
+        this.extraerCartaDelMazo("*", valor);
+      });
 
       let puntaje = this.calcularPuntaje();
-      
+
+      // Para testear
+      // console.log("------------------------------");
+      // console.log("Mazo final", this.mazoFinal);
+      // console.log("Parejas", this.parejas);
+      // console.log("Escaleras", this.escaleras);
+      // console.log("Resumen parcial", this.resumen);
+      // console.log("Puntaje", i, ":", puntaje);
+      // console.log("------------------------------");
+
       if (puntaje < puntajeFinal) {
         puntajeFinal = puntaje;
         this.resumenFinal = this.resumen;
       }
-      console.log("Puntaje", i + 1, ":", puntaje);
-      console.log("Mazo final:", this.mazoFinal);
     }
+
     puntajeFinal += 25 * this.comodines;
     if(puntajeFinal === 0) puntajeFinal = -10;
     if(this.resumenFinal === "") this.resumenFinal += `\n- No hizo ninguna combinación`;
@@ -39,6 +85,18 @@ class CalculadoraDeResultados {
     this.resumenFinal += `\n- Puntaje: ${puntajeFinal}`;
     console.log("Resumen:", this.resumenFinal);
     return puntajeFinal;
+  }
+
+  static puedeDividirse(escalera) {
+    const minimaDivision = Math.min(...escalera.join("").split("*").map(str => str.length));
+    return minimaDivision >= 2;
+  }
+
+  static dividirEscalera(escalera) {
+    const division = escalera.join("").split('*');
+    const arr1 = division[0].split("");
+    const arr2 = division[1].split("");
+    return [arr1, arr2];
   }
 
   static calcularPuntaje() {
@@ -99,10 +157,7 @@ class CalculadoraDeResultados {
   static buscarParejas(obj) {
     let result = [];
     // Se ordenan las claves de mayor a menor para armar las parejas mas altas primero
-    console.log("obj original:", obj);
-    console.log("claves ordenadas:", Object.keys(obj).reverse());
     for (let valor of Object.keys(obj).reverse()) {
-      console.log("valor", valor);
       if (obj[valor] == 2 && this.comodines) {
         result.push(valor + "*");
         this.comodines--;
@@ -110,7 +165,7 @@ class CalculadoraDeResultados {
         result.push(valor);
       }
     }
-    console.log("resultado", result);
+    result.forEach(valor => this.extraerCartaDelMazo("*", valor));
     return result;
   }
 
@@ -148,7 +203,7 @@ class CalculadoraDeResultados {
 
           if (escalera.length == 2) {
             if (this.comodines && !comodinUtilizado) {
-              escalera.push("*"); //escalera[escalera.length - 1] + 1 + "*" -> mas especifico
+              escalera[escalera.length - 1] === 12 ? escalera.unshift('*') : escalera.push('*');
               comodinUtilizado = true;
               this.comodines--;
             } else escalera = null;
@@ -207,18 +262,14 @@ class CalculadoraDeResultados {
         .map((carta) => carta.palo)
     );
     const cartasOrdenadasPorPalo = this.ordernarPorPalos(this.mazoFinal, palos);
-    const escaleras = this.buscarEscaleras(cartasOrdenadasPorPalo, this.comodines);
-    for(let escalera in escaleras) {
-      escaleras[escalera].forEach(e => {
-        if(e !== []) {
-          if(e.indexOf("*") === -1 && this.comodines) {
-            e.push("*");
-            this.comodines--;
-          }
-          this.resumen += `\n- Escalera de ${e.join(", ")} de ${escalera}`
-        };
-      });      
-    }
+    const escalerasObtenidas = this.buscarEscaleras(cartasOrdenadasPorPalo, this.comodines);
+    this.escaleras = this.limpiarEscaleras(escalerasObtenidas);
+  }
+
+  static limpiarEscaleras(escaleras) {
+    return Object.fromEntries(
+      Object.entries(escaleras).filter(([key, value]) => escaleras[key].length !== 0)
+    );
   }
 
   static calcularParejas() {
@@ -226,28 +277,20 @@ class CalculadoraDeResultados {
       .filter((carta) => typeof carta.valor === "number")
       .map((carta) => carta.valor);
     const cantidades = this.contarValores(valores);
-    const parejas = this.buscarParejas(cantidades, this.comodines);
-    parejas.forEach((valor) => {
-      if(!valor.includes("*") && this.comodines) {
-        valor += "*"
-        this.comodines--;
-      };
-      this.resumen += `\n- Parejas de ${valor.includes("*") ? valor.slice(0, -1) + " con comodin" : valor}.`
-      this.extraerCartaDelMazo("*", valor);
-    });
+    this.parejas = this.buscarParejas(cantidades, this.comodines);
   }
 }
 
-let mazo = [
-  { valor: 11, palo: 'basto' } ,
-  { valor: '', palo: 'comodin' } ,
-  { valor: 11, palo: 'oro' } ,
-  { valor: 4, palo: 'copas' } ,
-  { valor: 2, palo: 'oro' } ,
-  { valor: 6, palo: 'copas' } ,
-  { valor: 4, palo: 'espadas' } ,
-];
+// let mazo = [
+//   { valor: 8, palo: 'basto' } ,
+//   { valor: 9, palo: 'basto' } ,
+//   { valor: '', palo: 'comodin' } ,
+//   { valor: 2, palo: 'basto' } ,
+//   { valor: 2, palo: 'copas' } ,
+//   { valor: 2, palo: 'oro' } ,
+//   { valor: 8, palo: 'oro' } ,
+// ];
 
-CalculadoraDeResultados.calcular(mazo);
+// CalculadoraDeResultados.calcular(mazo);
 
 module.exports = { CalculadoraDeResultados };

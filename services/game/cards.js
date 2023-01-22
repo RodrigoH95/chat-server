@@ -16,6 +16,7 @@ class CardService {
         this.mazo.push({ valor: j + 1, palo });
       }
     }
+    return this.mazo;
   }
 
   getMazo() {
@@ -45,8 +46,6 @@ class CardService {
 
     return {valor, palo};
   }
-
-  // Calcular puntajes
 }
 
 module.exports = CardService;
