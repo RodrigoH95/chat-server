@@ -4,7 +4,6 @@ const utils = require("./utils");
 
 class Room {
   constructor(id, number, capacity = 2) {
-    console.log(`Sala ${number} (${id}) creada.`);
     this.number = number;
     this.id = id;
     this.players = [];
@@ -87,9 +86,15 @@ class GameRoom extends Room {
   }
 
   endMatch() {
-    console.log("Match ended in room", this.id);
+    console.log(`Partida finaliza en sala ${this.number} (${this.id})`);
     this.hasGameStarted = false;
     this.gameLogic = new GameLogic(this.io, this);
+  }
+
+  gameEndsByDisconnection() {
+    console.log("Finalizando partida por desconexión...");
+    this.endMatch();
+    this.io.to(this.id).emit("jugador-desconectado");
   }
 
   addPlayerToGame(playerID) {

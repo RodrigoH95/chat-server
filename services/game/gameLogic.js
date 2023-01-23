@@ -136,7 +136,6 @@ class GameLogic {
     const data = this.players.map(player => ({ name: player.name, isPlayerOne: player.isPlayerOne, cards: player.cards, score: player.score }))
     if(this.gameEnd) {
       const winner = this.players.find(player => player.score === Math.min(...this.players.map(player => player.score)));
-      console.log(`Partida finaliza en sala ${this.room.getNumber()} (${this.roomID})`);
       const winnerIsPlayerOne = winner.isPlayerOne;
       this.io.to(this.roomID).emit("game-end", card, data, winnerIsPlayerOne);
       return setTimeout(() => {

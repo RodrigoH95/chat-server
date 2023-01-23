@@ -5,6 +5,7 @@ const server = require("http").createServer(app);
 const io = require("socket.io")(server, {cors: {origin: '*'}});
 const RoomService = require("./services/room").RoomService;
 const MessageService = require("./services/message").MessageService;
+const GameRoom = require("./utils/room").GameRoom;
 
 const roomService = new RoomService(io);
 const messageService = new MessageService(io);
@@ -129,10 +130,61 @@ io.on("connection", socket => {
       console.log("Error reconnecting...");
       socket.emit("failed-load");
     }
+  });
+
+  socket.on("game-accepted", () => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    try {
+      if(room.canStartMatch()) {
+        room.startMatch();
+        io.to(room.getID()).emit("game-accepted", true);
+        setTimeout(() => {
+          io.to(room.getID()).emit("inicia-partida");
+        }, 3000);
+      }
+    } catch (err) {
+      console.log("Error al aceptar partida");
+    }
+  });
+
+  socket.on("game-request-expired", () => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room && !room.hasGameStarted) {
+      io.to(room.getID()).emit("game-accepted", false);
+    }
+  })
+
+  socket.on("game-rejected", () => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room) {
+      io.to(room.getID()).emit("game-accepted", false);
+    }
+  })
+
+  socket.on("user-send-game-request", () => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room && room.isFull()) {
+      io.to(room.getID()).emit("game-request", socket.id, room.getPlayersData());
+    } else {
+      console.log("No se pudo enviar petición de partida...");
+    }
   })
 
   socket.on("disconnecting", (reason) => {
     console.log(`User ${socket.id} disconnecting: ${reason}`);
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room && room instanceof GameRoom) {
+      console.log(room.getID(), "Jugador se desconecta de una partida...");
+      
+      setTimeout(() => {
+        const player = room.gameLogic.players.find(player => player.id == socket.id);
+        if(player) {
+          // Si aun se encuentra el jugador desconectado significa que no volvió (la ID se renueva al reconectar)
+          console.log("El jugador no volvio");
+          room.gameEndsByDisconnection();
+        }
+      }, 10000)
+    }
     roomService.leaveAllRooms(socket);
   });
 });

@@ -101,8 +101,8 @@ class RoomService {
     this.sendUsersInfo(roomID);
     if(room instanceof GameRoom && room.canStartMatch()) {
       console.log("Se puede iniciar partida...");
-      this.io.to(roomID).emit("inicia-partida");
-      room.startMatch();
+      // this.io.to(roomID).emit("inicia-partida");
+      // room.startMatch();
     };
   }
 
