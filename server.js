@@ -192,7 +192,7 @@ io.on("connection", socket => {
           console.log("El jugador no volvio");
           room.gameEndsByDisconnection();
         }
-      }, 10000)
+      }, 25000)
     }
     roomService.leaveAllRooms(socket);
   });
