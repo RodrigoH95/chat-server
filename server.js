@@ -168,7 +168,16 @@ io.on("connection", socket => {
     } else {
       console.log("No se pudo enviar petición de partida...");
     }
-  })
+  });
+
+  socket.on("reaccion", (reaccionID, isPlayerOne) => {
+    const room = roomService.findRoomByPlayerID(socket.id);
+    if(room) {
+      io.to(room.getID()).emit("reaccion", reaccionID, isPlayerOne);
+    } else {
+      console.log("No se encontró sala para enviar reaccion...");
+    }
+  });
 
   socket.on("disconnecting", (reason) => {
     console.log(`User ${socket.id} disconnecting: ${reason}`);
