@@ -100,10 +100,9 @@ class GameLogic {
     const player = this.players.find(player => player.isPlayerOne === isPlayerOne);
     const opponent = this.players.find(player => player.isPlayerOne !== isPlayerOne);
     try {
-      console.log(player.name, "corta");
+      console.log(`${player.name} corta con ${card.valor} de ${card.palo}`);
       player.cards = player.cards.filter(c => JSON.stringify(c) !== JSON.stringify(card));
-      this.calculateScores(player);
-      this.calculateScores(opponent);
+      this.calculateScores(player, opponent);
       const scores = this.players.map(player => player.score);
       if(Math.max(...scores) >= this.pointsToLose) this.gameEnd = true;
       this.roundEnd(card);
@@ -112,9 +111,27 @@ class GameLogic {
     }
   }
 
-  calculateScores(player) {
-    console.log("Calculando puntaje de:", player.name);
-    player.score = Math.max(0, player.score + Calculadora.calcular(player.cards));
+  calculateScores(player, opponent) {
+    const playerResult = Calculadora.calcular(player.cards);
+    if(playerResult.puntaje === -100) {
+      // hacer 100 el puntaje del oponente
+      return console.log(player.name, "ganó por chinchon");
+    }
+    const opponentResult = Calculadora.calcular(opponent.cards);
+    console.log("PlayerResult", playerResult);
+    console.log("opponentResult", opponentResult);
+    // Jugador no hizo -10 -> Se permite al oponente jugar sus cartas con las de jugador
+    if(playerResult.mazoFinal.length > 0) {
+      console.log(opponent.name, "intenta agregar cartas al juego de", player.name);
+      // oponente puede agregar sus cartas al juego del jugador
+      const result = Calculadora.calcularMazoCombinado(opponentResult.mazoFinal, playerResult.cartasUtilizadas, playerResult.juegos);
+      opponentResult.puntaje = result.puntaje;
+      opponentResult.resumen += result.resumen;
+    }
+    console.log(player.name, "suma", playerResult.puntaje);
+    console.log(opponent.name, "suma", opponentResult.puntaje);
+    player.score = Math.max(0, player.score + playerResult.puntaje);
+    opponent.score = Math.max(0, opponent.score + opponentResult.puntaje);
   }
 
   agregarCartaAlJugador(receiver, drawnCard) {
@@ -141,11 +158,11 @@ class GameLogic {
       return setTimeout(() => {
         this.room.endMatch();
         console.log(this.gameID, " - Sala de juego reiniciada...");
-      }, 3000);
+      }, 5000);
     }
     this.io.to(this.roomID).emit("round-end", card, data);
     this.turn = !this.turn;
-    setTimeout(() => this.newRound(), 5000);
+    setTimeout(() => this.newRound(), 9000);
   }
 
   sendCard(receptor, card) {

@@ -6,17 +6,20 @@ class CalculadoraDeResultados {
 
   static calcular(mazo) {
     let puntajeFinal = 150;
-    console.log("=========================");
     console.log("Calculadora recibe mazo:")
     mazo.forEach(card => console.log(card, ","));
+    let cartasRestantes = [];
+    let juegos = {
+      parejas: null,
+      escaleras: null,
+    }
     for (let i = 0; i < 2; i++) {
       this.parejas = null;
       this.escaleras = null;
       this.resumen = "";
       this.mazoFinal = [...mazo];
-      this.comodines = this.mazoFinal.filter(
-        (carta) => carta.palo === "comodin"
-      ).length;
+      this.comodines = this.mazoFinal.filter((carta) => carta.palo === "comodin").length;
+      console.log("Se cuenta con", this.comodines, "comodines");
 
       if (i) {
         this.calcularParejas();
@@ -25,41 +28,11 @@ class CalculadoraDeResultados {
         this.calcularEscaleras();
         this.calcularParejas();
       }
-      for(let escalera in this.escaleras) {
-        this.escaleras[escalera].forEach(e => {
-          // Caso particular en el que haya 2 comodines y una sola escalera larga
-          // Se analiza si la escalera se puede dividir en 2 mas pequeñas
-          let str = e.join(", "); // Inicial
-          if(e.indexOf("*") !== -1 && e.length >= 5 && this.comodines) {
-            console.log("Se divide la escalera para utilizar un segundo comodin...");
-            this.comodines--;
-            this.extraerCartaDelMazo("comodin", "");
-            const divisiones = this.dividirEscalera(e); // Se agregan los comodines
-            const division2 = divisiones[1];
-            division2[division2.length - 1] === 12 ? division2.unshift("*") : division2.push("*");
-            str = `${divisiones[0].join(", ")} y ${divisiones[1].join(", ")}`;
-          }
-          // En el caso que haya quedado un comodin sobrante y se pueda agregar a un juego existente
-          else if (e.indexOf("*") === -1 && this.comodines) {
-            e[e.length -1] === 12 ? e.unshift("*") : e.push("*");
-            this.comodines--;
-            this.extraerCartaDelMazo("comodin", "");
-            str = e.join(", ");
-          }
-          this.resumen += `\n- Escalera de ${str} de ${escalera}`;
-        });      
-      }
-      this.parejas.forEach((valor) => {
-        if(!valor.includes("*") && this.comodines) {
-          valor += "*"
-          this.comodines--;
-          this.extraerCartaDelMazo("comodin", "");
-        };
-        this.resumen += `\n- Parejas de ${valor.includes("*") ? valor.slice(0, -1) + " con comodin" : valor}.`
-        this.extraerCartaDelMazo("*", valor);
-      });
 
-      let puntaje = this.calcularPuntaje();
+      this.puntaje = this.calcularPuntaje(this.mazoFinal);
+
+      this.resumirEscaleras();
+      this.resumirParejas();
 
       // Para testear
       // console.log("------------------------------");
@@ -70,9 +43,12 @@ class CalculadoraDeResultados {
       // console.log("Puntaje", i + 1, ":", puntaje);
       // console.log("------------------------------");
 
-      if (puntaje < puntajeFinal) {
-        puntajeFinal = puntaje;
+      if (this.puntaje < puntajeFinal) {
+        puntajeFinal = this.puntaje;
         this.resumenFinal = this.resumen;
+        cartasRestantes = this.mazoFinal;
+        juegos.parejas = this.parejas;
+        juegos.escaleras = this.escaleras;
       }
     }
 
@@ -81,9 +57,121 @@ class CalculadoraDeResultados {
     if(this.resumenFinal === "") this.resumenFinal += `\n- No hizo ninguna combinación`;
     if(this.comodines) this.resumenFinal += `\n- ${this.comodines} comodin/es sin utilizar`;
     this.resumenFinal += `\n- Puntaje: ${puntajeFinal}`;
-    console.log("Resumen:", this.resumenFinal);
-    console.log("=========================");
-    return puntajeFinal;
+
+    const cartasUtilizadas = () => {
+      console.log("Cartas restantes:", cartasRestantes, ". Filtrando...");
+      return mazo.filter(card => JSON.stringify(cartasRestantes).indexOf(JSON.stringify(card)) === - 1);
+    }
+
+    const resultado = {
+      puntaje: puntajeFinal,
+      resumen: this.resumenFinal,
+      cartasUtilizadas: cartasUtilizadas(),
+      mazoFinal: cartasRestantes,
+      juegos: juegos,
+    }
+    return resultado;
+  }
+
+  static calcularMazoCombinado(mazoJugador, cartasUtilizadasOponente, juegos) {
+    // Oponente es el jugador que cortó, jugador es quien intenta sumar sus cartas en el juego del oponente
+    const escaleras = {...juegos.escaleras};
+    const parejas = [...juegos.parejas];
+    let puntajeFinal = 150;
+    let mazoFinal = [];
+    let cedidasFinal = [];
+    let comodinesFinal = 0;
+    for(let i = 0; i < 1; i++) {
+      const cartasCedidas = [];
+      // Se suman comodines del jugador y del oponente. Si luego de los calculos sobran comodines es porque los del jugador no se pudieron ceder
+      // Probablemente esto de problemas si el comodin estaba en una pareja y ahora se agrega a una escalera o viceversa
+      this.comodines = mazoJugador.filter(carta => carta.valor === "").length + cartasUtilizadasOponente.filter(carta => carta.valor === "").length;
+      let mazo = [...mazoJugador];
+      if(i) {
+        if(parejas) this.cederParejas(parejas, mazo, cartasCedidas, this.comodines);
+        if(escaleras) this.cederEscaleras(escaleras, mazo, cartasCedidas, this.comodines);
+      } else {
+        if(escaleras) this.cederEscaleras(escaleras, mazo, cartasCedidas, this.comodines);
+        if(parejas) this.cederParejas(parejas, mazo, cartasCedidas, this.comodines);
+      }
+
+      mazo = mazo.filter(carta => JSON.stringify(cartasCedidas).indexOf(JSON.stringify(carta)) === - 1);
+
+      let puntaje = this.calcularPuntaje(mazo);
+      if(puntaje < puntajeFinal) {
+        puntajeFinal = puntaje;
+        mazoFinal = mazo;
+        cedidasFinal = cartasCedidas;
+        comodinesFinal = this.comodines;
+      }
+    }
+
+    // Comprobación de comodines cedidos
+    console.log("Comodines al final:", comodinesFinal);
+    const comodinesCedidos = Math.max(0, mazoJugador.filter(carta => carta.valor === "").length - comodinesFinal);
+    console.log("Usuario cede", comodinesCedidos, "comodines");
+    if(comodinesCedidos) {
+      for(let i = 0; i < comodinesCedidos; i++) {
+        const carta = mazoFinal.splice(mazoFinal.findIndex(carta => carta.valor === ""), 1);
+        console.log("Esta carta deberia ser un comodin", carta);
+        cedidasFinal.push(carta);
+      }
+    } else {
+      console.log("Sobran", comodinesFinal, " comodines. Revisar si se pueden añadir a juegos preexistentes");
+    }
+
+    console.log("Cartas cedidas", cedidasFinal);
+    console.log("Mazo final del jugador", mazoFinal);
+
+    const result = {
+      puntaje: puntajeFinal,
+      resumen: "No hay resumen aun",
+    }
+    
+    return result;
+  }
+
+  static cederParejas(parejas, mazoJugador, cartasCedidas, comodines) {
+    console.log("Intentando agregar parejas");
+      parejas.forEach(valor =>  {
+        if(valor.includes("*")) {
+          valor = valor.substring(0, valor.length - 1);
+        }
+        console.log("Se buscan en el mazo del jugador cartas de valor", valor);
+        // Se quitan cartas del mismo valor del mazo
+        mazoJugador.filter(carta => carta.valor === Number(valor)).forEach(carta => {
+          if(JSON.stringify(cartasCedidas).indexOf(JSON.stringify(carta)) === -1) {
+            console.log("Se cede", carta.valor, "de", carta.palo);
+            cartasCedidas.push(carta);
+          }
+        });
+      });
+  }
+
+  static cederEscaleras(escaleras, mazoJugador, cartasCedidas, comodines) {
+    for(const palo in escaleras) {
+      const valores = mazoJugador.filter(carta => carta.palo === palo).map(carta => carta.valor);
+      if(valores.length === 0) continue;
+      console.log("Intentando sumar cartas a las escaleras del oponente");
+      let newEscalera = [...valores];
+      this.comodines = comodines;
+      for(const escalera of escaleras[palo]) newEscalera = newEscalera.concat(escalera);
+      // newEscalera.forEach(valor => {if(valor === "*") this.comodines++}); //Ya se suman comodines al comienzo
+      newEscalera = newEscalera.filter(valor => valor !== "*").sort((a, b) => a - b);
+      console.log("newEscalera es", newEscalera);
+      escaleras[palo] = this.separarValoresPorPalo(newEscalera);
+      let escalerasObtenidas = {[palo]: []};
+      this.calcularEscalerasPorPalo(palo, escaleras[palo], escalerasObtenidas);
+      console.log("Escaleras de", palo, "obtenidas", escalerasObtenidas);
+      escalerasObtenidas[palo].forEach(escalera => {
+        escalera.forEach(valor => {
+          if(mazoJugador.findIndex(carta => JSON.stringify(carta) === JSON.stringify({valor, palo})) !== -1) {
+          console.log("Se cede", valor, "de", palo);
+          cartasCedidas.push({valor, palo});
+        }
+        })
+      });
+    }
   }
 
   static dividirEscalera(escalera) {
@@ -103,8 +191,8 @@ class CalculadoraDeResultados {
     return [arr1, arr2];
   }
 
-  static calcularPuntaje() {
-    return this.mazoFinal
+  static calcularPuntaje(mazo) {
+    return mazo
       .map(card => Number(card.valor))
       .reduce((acc, value) => acc + value, 0);
   }
@@ -137,10 +225,17 @@ class CalculadoraDeResultados {
   }
 
   static separarValores(obj) {
+    // Divide los valores del mismo palo en grupos de posibles escaleras
     for (let palo in obj) {
-      let result = [];
       let arr = obj[palo];
-      let currentValue = arr[0];
+      const result = this.separarValoresPorPalo(arr);
+      obj[palo] = result;
+    }
+  }
+
+  static separarValoresPorPalo(arr) {
+    let result = [];
+    let currentValue = arr[0];
       let itemsAmount = 0;
       let index = 0;
       for (let i = 1; i < arr.length; i++) {
@@ -154,8 +249,7 @@ class CalculadoraDeResultados {
       }
       let corte = arr.slice(index, arr.length);
       result.push(corte);
-      obj[palo] = result;
-    }
+      return result;
   }
 
   static buscarParejas(obj) {
@@ -178,61 +272,125 @@ class CalculadoraDeResultados {
     obj = this.sortObject(obj); // Ordena el objeto colocando primero los palos que tengan la mayor suma de valores
     for (let palo in obj) {
       result[palo] = [];
-      const arr = obj[palo].reverse(); // Primero intenta formar combinaciones con los valores mas altos
-      for (let valores of arr) {
-        if (valores.length <= 1) continue;
-        else if (valores.length >= 2) {
-          valores.reverse(); // Ordena los valores de mayor a menor
-          let comodinUtilizado = false;
-          let currentValue = valores[0];
-          let escalera = [currentValue];
-          for (let i = 1; i < valores.length; i++) {
-            // Si hay 2 de diferencia, los valores necesitan un comodin entre medio
-            if (currentValue - valores[i] == 2) {
-              if (this.comodines && !comodinUtilizado) {
+      const arr = obj[palo]; // Primero intenta formar combinaciones con los valores mas altos
+      this.calcularEscalerasPorPalo(palo, arr, result);
+    }
+    return result;
+  }
+
+  static calcularEscalerasPorPalo(palo, arr, result) {
+    console.log("Calculadora de escaleras recibe", arr);
+    for (let valores of arr.reverse()) {
+      if (valores.length <= 1) continue;
+      else if (valores.length >= 2) {
+        valores.reverse(); // Ordena los valores de mayor a menor
+        let comodinUtilizado = false;
+        let currentValue = valores[0];
+        let escalera = [currentValue];
+        for (let i = 1; i < valores.length; i++) {
+          // Si hay 2 de diferencia, los valores necesitan un comodin entre medio
+          if (currentValue - valores[i] == 2) {
+            if (this.comodines) {
+              if(!comodinUtilizado) {
                 this.comodines--;
                 comodinUtilizado = true;
                 const cartaComodin = "*"; // currentValue + 1 + "*" -> mas especifico
                 escalera.push(cartaComodin);
                 escalera.push(valores[i]);
+              } else {
+                if(this.chequearEscaleraValida(escalera.slice(0, -1), result, palo, true)) {
+                  // Si ingresa acá, se agregó la escalera sin el ultimo valor
+                  this.comodines--;
+                  const lastValue = escalera.pop();
+                  escalera = [lastValue, '*', valores[i]];
+                }
               }
-              else {
-               // En este punto puede haber una escalera válida del mismo palo que ya utilizó un comodin
-               // Se debe verificar que la escalera es válida y guardarla antes de seguir con los siguientes valores
-                this.chequearEscaleraValida(escalera, result, palo, comodinUtilizado);
-                escalera = [valores[i]];
-                comodinUtilizado = !comodinUtilizado;
-              }
-            } else if (currentValue - valores[i] == 1) {
-              // Si la diferencia es 1 estan en secuencia y se agrega a la escalera
-              escalera.push(valores[i]);
             }
-
-            currentValue = valores[i];
+            else {
+             // En este punto puede haber una escalera válida del mismo palo que ya utilizó un comodin
+             // Se debe verificar que la escalera es válida y guardarla antes de seguir con los siguientes valores
+              this.chequearEscaleraValida(escalera, result, palo, comodinUtilizado);
+              escalera = [valores[i]];
+              comodinUtilizado = !comodinUtilizado;
+            }
+          } else if (currentValue - valores[i] == 1) {
+            // Si la diferencia es 1 estan en secuencia y se agrega a la escalera
+            escalera.push(valores[i]);
           }
 
-
-          this.chequearEscaleraValida(escalera, result, palo, comodinUtilizado);
+          currentValue = valores[i];
         }
+
+
+        this.chequearEscaleraValida(escalera, result, palo, comodinUtilizado);
       }
     }
-    return result;
+  }
+
+  static resumirEscaleras() {
+    for(let escalera in this.escaleras) {
+      this.escaleras[escalera].forEach(e => {
+        // Caso particular en el que haya 2 comodines y una sola escalera larga
+        // Se analiza si la escalera se puede dividir en 2 mas pequeñas
+        let str = e.join(", "); // Inicial
+        if(e.length === 7) {
+          if(e.indexOf('*') === -1) {
+            console.log("CHINCHON");
+            this.puntaje = -100;
+          } else {
+            console.log("CHINCHON con comodin");
+            this.puntaje = -25;
+          }
+        }
+        if(e.indexOf("*") !== -1 && this.comodines) {
+          if(e.length >= 5) {
+            this.comodines--;
+            this.extraerCartaDelMazo("comodin", "");
+            const divisiones = this.dividirEscalera(e); // Se agregan los comodines
+            const division2 = divisiones[1];
+            division2[division2.length - 1] === 12 ? division2.unshift("*") : division2.push("*");
+            str = `${divisiones[0].join(", ")} y ${divisiones[1].join(", ")}`;
+          } else {
+            // En el caso que haya quedado un comodin sobrante y se pueda agregar a un juego existente
+            e[e.length -1] === 12 ? e.unshift("*") : e.push("*");
+            this.comodines--;
+            this.extraerCartaDelMazo("comodin", "");
+            str = e.join(", ");
+          }
+        }
+        this.resumen += `\n- Escalera de ${str} de ${escalera}`;
+      });      
+    }
+  }
+
+  static resumirParejas() {
+    this.parejas.forEach((valor) => {
+      if(!valor.includes("*") && this.comodines) {
+        valor += "*"
+        this.comodines--;
+        this.extraerCartaDelMazo("comodin", "");
+      };
+      this.resumen += `\n- Parejas de ${valor.includes("*") ? valor.slice(0, -1) + " con comodin" : valor}.`
+      this.extraerCartaDelMazo("*", valor);
+    });
   }
 
   static chequearEscaleraValida(escalera, result, palo, comodinUtilizado) {
+    console.log("Validadora de escalera recibe:", escalera);
     if (escalera.length == 2) {
       if (this.comodines && !comodinUtilizado) {
         escalera[escalera.length - 1] === 12 ? escalera.unshift('*') : escalera.push('*');
         comodinUtilizado = true;
         this.comodines--;
-      } else escalera = null;
+      } else return false;
     }
     if (escalera && escalera.length > 2) {
       result[palo].push(escalera.reverse()); // Reverse reordena la escalera
       escalera.forEach((valor) => {
         this.extraerCartaDelMazo(palo, valor);
       });
-    }
+      return true;
+    } else return false;
   }
 
   static sortObject(obj) {
@@ -271,14 +429,18 @@ class CalculadoraDeResultados {
   }
 
   static calcularEscaleras() {
-    const palos = new Set(
-      this.mazoFinal
-        .filter((carta) => carta.palo !== "comodin")
-        .map((carta) => carta.palo)
-    );
+    const palos = this.obtenerPalos(this.mazoFinal);
     const cartasOrdenadasPorPalo = this.ordernarPorPalos(this.mazoFinal, palos);
     const escalerasObtenidas = this.buscarEscaleras(cartasOrdenadasPorPalo, this.comodines);
     this.escaleras = this.limpiarEscaleras(escalerasObtenidas);
+  }
+
+  static obtenerPalos(mazo) {
+    return new Set(
+      mazo
+        .filter((carta) => carta.palo !== "comodin")
+        .map((carta) => carta.palo)
+    );
   }
 
   static limpiarEscaleras(escaleras) {
@@ -295,5 +457,32 @@ class CalculadoraDeResultados {
     this.parejas = this.buscarParejas(cantidades, this.comodines);
   }
 }
+
+let mazo1 = [
+  { valor: 3, palo: 'copas' } ,
+  { valor: 1, palo: 'copas' } ,
+  { valor: 7, palo: 'copas' } ,
+  { valor: 7, palo: 'espadas' } ,
+  { valor: 10, palo: 'copas' } ,
+  { valor: "", palo: 'comodin' } ,
+  { valor: 2, palo: 'copas' } ,
+]
+
+let mazo2 = [
+  { valor: 1, palo: 'oro' } ,
+  { valor: 5, palo: 'copas' } ,
+  { valor: 8, palo: 'copas' } ,
+  { valor: 7, palo: 'basto' } ,
+  { valor: "", palo: 'comodin' } ,
+  { valor: 10, palo: 'basto' } ,
+  { valor: 4, palo: 'oro' } ,
+]
+
+let resultado1 = CalculadoraDeResultados.calcular(mazo1);
+console.log("Resultado 1", resultado1);
+let resultado2 = CalculadoraDeResultados.calcular(mazo2);
+console.log("Resultado 2", resultado2);
+CalculadoraDeResultados.calcularMazoCombinado(resultado2.mazoFinal, resultado1.cartasUtilizadas, resultado1.juegos);
+
 
 module.exports = { CalculadoraDeResultados };
