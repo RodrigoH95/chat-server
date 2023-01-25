@@ -128,6 +128,7 @@ class CalculadoraDeResultados {
 
     const result = {
       puntaje: puntajeFinal,
+      cartasCedidas: cedidasFinal,
       resumen: resumenFinal.join("\n"),
     }
     
