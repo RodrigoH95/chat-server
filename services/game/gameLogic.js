@@ -102,36 +102,40 @@ class GameLogic {
     try {
       console.log(`${player.name} corta con ${card.valor} de ${card.palo}`);
       player.cards = player.cards.filter(c => JSON.stringify(c) !== JSON.stringify(card));
-      this.calculateScores(player, opponent);
+      const resumen = this.calculateScores(player, opponent);
       const scores = this.players.map(player => player.score);
       if(Math.max(...scores) >= this.pointsToLose) this.gameEnd = true;
-      this.roundEnd(card);
+      this.roundEnd(card, resumen);
     } catch(err) {
       console.log("gameLogic.js playerEndsRound - Error finalizando ronda", err);
     }
   }
 
   calculateScores(player, opponent) {
+    let resumenFinal = "";
     const playerResult = Calculadora.calcular(player.cards);
     if(playerResult.puntaje === -100) {
       // hacer 100 el puntaje del oponente
-      return console.log(player.name, "ganó por chinchon");
+      return resumenFinal += `${player.name} gana por chinchón!}`;
     }
+    resumenFinal += `${player.name}:` + playerResult.resumen;
     const opponentResult = Calculadora.calcular(opponent.cards);
-    console.log("PlayerResult", playerResult);
-    console.log("opponentResult", opponentResult);
     // Jugador no hizo -10 -> Se permite al oponente jugar sus cartas con las de jugador
     if(playerResult.mazoFinal.length > 0) {
       console.log(opponent.name, "intenta agregar cartas al juego de", player.name);
       // oponente puede agregar sus cartas al juego del jugador
       const result = Calculadora.calcularMazoCombinado(opponentResult.mazoFinal, playerResult.cartasUtilizadas, playerResult.juegos);
       opponentResult.puntaje = result.puntaje;
-      opponentResult.resumen += result.resumen;
+      opponentResult.resumen += ('\nCartas cedidas:\n' + result.resumen);
+    } else {
+      resumenFinal += `\n${player.name} combinó todas sus cartas por lo que ${opponent.name} no puede descontar puntos!`;
     }
-    console.log(player.name, "suma", playerResult.puntaje);
-    console.log(opponent.name, "suma", opponentResult.puntaje);
+    resumenFinal += `\n${opponent.name}:` + opponentResult.resumen;
+    resumenFinal += `\nPuntajes de la ronda: \n${player.name}: ${playerResult.puntaje}\n${opponent.name}: ${opponentResult.puntaje}`;
     player.score = Math.max(0, player.score + playerResult.puntaje);
     opponent.score = Math.max(0, opponent.score + opponentResult.puntaje);
+    console.log(resumenFinal);
+    return resumenFinal;
   }
 
   agregarCartaAlJugador(receiver, drawnCard) {
@@ -149,7 +153,7 @@ class GameLogic {
     }
   }
 
-  roundEnd(card) {
+  roundEnd(card, resumen) {
     const data = this.players.map(player => ({ name: player.name, isPlayerOne: player.isPlayerOne, cards: player.cards, score: player.score }))
     if(this.gameEnd) {
       const winner = this.players.find(player => player.score === Math.min(...this.players.map(player => player.score)));
@@ -160,7 +164,7 @@ class GameLogic {
         console.log(this.gameID, " - Sala de juego reiniciada...");
       }, 5000);
     }
-    this.io.to(this.roomID).emit("round-end", card, data);
+    this.io.to(this.roomID).emit("round-end", card, data, resumen);
     this.turn = !this.turn;
     setTimeout(() => this.newRound(), 9000);
   }
