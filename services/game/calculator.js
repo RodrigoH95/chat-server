@@ -19,7 +19,6 @@ class CalculadoraDeResultados {
       this.resumen = "";
       this.mazoFinal = [...mazo];
       this.comodines = this.mazoFinal.filter((carta) => carta.palo === "comodin").length;
-      console.log("Se cuenta con", this.comodines, "comodines");
 
       if (i) {
         this.calcularParejas();
@@ -59,7 +58,7 @@ class CalculadoraDeResultados {
     // this.resumenFinal += `\n- Puntaje: ${puntajeFinal}`;
 
     const cartasUtilizadas = () => {
-      console.log("Cartas restantes:", cartasRestantes, ". Filtrando...");
+      console.log("Cartas restantes:", cartasRestantes);
       return mazo.filter(card => JSON.stringify(cartasRestantes).indexOf(JSON.stringify(card)) === - 1);
     }
 
@@ -116,15 +115,11 @@ class CalculadoraDeResultados {
       resumenFinal.push(`- ${comodinesCedidos} comodin/es`);
       for(let i = 0; i < comodinesCedidos; i++) {
         const carta = mazoFinal.splice(mazoFinal.findIndex(carta => carta.valor === ""), 1);
-        console.log("Esta carta deberia ser un comodin", carta);
         cedidasFinal.push(carta);
       }
     } else {
       console.log("No se han cedido comodines");
     }
-
-    console.log("Cartas cedidas", cedidasFinal);
-    console.log("Mazo final del jugador", mazoFinal);
 
     const result = {
       puntaje: puntajeFinal,
@@ -343,7 +338,7 @@ class CalculadoraDeResultados {
             this.puntaje = -25;
           }
         }
-        if(e.indexOf("*") !== -1 && this.comodines) {
+        if((e.indexOf('*') === - 1) && this.comodines) {
           if(e.length >= 5) {
             this.comodines--;
             this.extraerCartaDelMazo("comodin", "");
