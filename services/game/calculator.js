@@ -5,6 +5,7 @@ class CalculadoraDeResultados {
   static resumenFinal = "";
 
   static calcular(mazo) {
+    let comodinesFinal = 0;
     let puntajeFinal = 150;
     console.log("Calculadora recibe mazo:")
     mazo.forEach(card => console.log(card, ","));
@@ -43,6 +44,7 @@ class CalculadoraDeResultados {
       // console.log("------------------------------");
 
       if (this.puntaje < puntajeFinal) {
+        comodinesFinal = this.comodines;
         puntajeFinal = this.puntaje;
         this.resumenFinal = this.resumen;
         cartasRestantes = this.mazoFinal;
@@ -51,10 +53,10 @@ class CalculadoraDeResultados {
       }
     }
 
-    puntajeFinal += 25 * this.comodines;
+    puntajeFinal += 25 * comodinesFinal;
     if(puntajeFinal === 0) puntajeFinal = -10;
     if(this.resumenFinal === "") this.resumenFinal += `\n- No hizo ninguna combinación`;
-    if(this.comodines) this.resumenFinal += `\n- ${this.comodines} comodin/es sin utilizar`;
+    if(comodinesFinal) this.resumenFinal += `\n- ${comodinesFinal} comodin/es sin utilizar`;
     // this.resumenFinal += `\n- Puntaje: ${puntajeFinal}`;
 
     const cartasUtilizadas = () => {
