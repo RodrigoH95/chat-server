@@ -132,6 +132,46 @@ class CalculadoraDeResultados {
     return result;
   }
 
+  // Recibe una escalera con comodin y devuelve el valor que el comodin reemplaza
+  static obtenerNumeroComodin(escalera) {
+    const index = escalera.indexOf('*');
+    return escalera[index + 1] - 1 || escalera[index - 1] + 1;
+  }
+
+  // Recibe escalera y cartas para agregar
+  static completarEscalera(escalera, cartas) {
+    console.log("Completar escalera recibe", escalera);
+    console.log("Cartas para donar", cartas);
+    const donadas = [];
+
+    const valores = [...escalera];
+    const donantes = [...cartas];
+    console.log(valores, donantes);
+    const condition1 = () => donantes.indexOf(valores[0] - 1) >= 0
+    const condition2 = () => donantes.indexOf(valores[valores.length - 1] + 1) >= 0;
+
+    while(condition1() || condition2()) {
+        if(condition1()) {
+            const index = donantes.indexOf(valores[0] - 1);
+            const card = donantes[index];
+            valores.unshift(card);
+            donantes.splice(index, 1);
+            donadas.push(card);
+        } else {
+            const index = donantes.indexOf(valores[valores.length - 1] + 1);
+            const card = donantes[index];
+            valores.push(card);
+            donantes.splice(index, 1);
+            donadas.push(card);
+        }
+    }
+    console.log("Escalera final", valores);
+    console.log("Cartas donadas", donadas);
+    console.log("Donantes restantes", donantes);
+
+    return donadas;
+}
+
   static cederParejas(parejas, mazoJugador, cartasCedidas, comodines, resumen) {
     console.log("Intentando agregar parejas");
       parejas.forEach(valor =>  {
@@ -154,22 +194,19 @@ class CalculadoraDeResultados {
       const valores = mazoJugador.filter(carta => carta.palo === palo).map(carta => carta.valor);
       if(valores.length === 0) continue;
       console.log("Intentando sumar cartas a las escaleras del oponente");
-      let newEscalera = [...valores];
-      this.comodines = comodines;
-      for(const escalera of escaleras[palo]) newEscalera = newEscalera.concat(escalera);
-      // newEscalera.forEach(valor => {if(valor === "*") this.comodines++}); //Ya se suman comodines al comienzo
-      newEscalera = newEscalera.filter(valor => valor !== "*").sort((a, b) => a - b);
-      escaleras[palo] = this.separarValoresPorPalo(newEscalera);
-      let escalerasObtenidas = {[palo]: []};
-      this.calcularEscalerasPorPalo(palo, escaleras[palo], escalerasObtenidas);
-      escalerasObtenidas[palo].forEach(escalera => {
-        escalera.forEach(valor => {
-          if(mazoJugador.findIndex(carta => JSON.stringify(carta) === JSON.stringify({valor, palo})) !== -1) {
-          resumen.push(`- ${valor} de ${palo}`);
-          cartasCedidas.push({valor, palo});
-        }
-        });
-      });
+      for(const escalera of escaleras[palo]) {
+      const copy = [...escalera];
+      if(copy.indexOf('*') !== -1 ) {
+        copy[copy.indexOf('*')] = this.obtenerNumeroComodin(copy);
+      }
+      const cedidas = this.completarEscalera(copy, valores);
+      // Quito las cartas utilizadas del mazo final del jugador
+      mazoJugador = mazoJugador.filter(carta => cedidas.indexOf(carta.valor) === -1);
+      console.log("Cedidas", cedidas);
+      cartasCedidas.push(...cedidas.map(carta => ({valor: carta, palo: palo})));
+      console.log("cartasCedidas", cartasCedidas);
+      cedidas.forEach(carta => resumen.push(`- ${carta} de ${palo}`));
+      };
     }
   }
 
@@ -376,7 +413,8 @@ class CalculadoraDeResultados {
   static chequearEscaleraValida(escalera, result, palo, comodinUtilizado) {
     if (escalera.length == 2) {
       if (this.comodines && !comodinUtilizado) {
-        escalera[escalera.length - 1] === 12 ? escalera.unshift('*') : escalera.push('*');
+        // Recibe la escalera revertida
+        escalera[0] === 12 ? escalera.push('*') : escalera.unshift('*');
         comodinUtilizado = true;
         this.comodines--;
       } else return false;
